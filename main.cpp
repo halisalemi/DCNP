@@ -46,6 +46,43 @@ int main(int argc, char *argv[])
 		cerr << "ERROR: Not enough arguments.";
 
 
+	else if (strcmp(argv[1], "Heuristic") == 0)
+	{
+		KGraph g(argv[3], argv[3], argv[2]);
+
+		long k = atol(argv[4]); //short distance
+		long b = atol(argv[5]); //budget 
+		time_t start = clock();
+
+		time_t Heuristic_start = clock();
+		vector<long> Heuristic_sol = Greedy_Heuristic(g, k, b);
+
+		vector<long> close_vertices;
+		long num_close_vertices = 0;
+
+		vector<bool> new_nodes(g.n, true);
+
+		for (long i = 0; i < Heuristic_sol.size(); i++)
+		{
+			new_nodes[Heuristic_sol[i]] = false;
+		}
+
+		for (long v = 0; v < g.n; v++)
+		{
+			vector <long> dist_from_v = g.ShortestPathsUnweighted(v, new_nodes);
+			for (long w = v + 1; w < g.n; w++)
+			{
+				if (dist_from_v[w] <= k)
+				{
+					num_close_vertices++;
+				}
+			}
+		}
+		cout << "heur is " << 2 * num_close_vertices << endl;
+		cout << "Time that spent in Heuristic in sec is: " << (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC << endl;
+	}
+
+
 
 	else if (strcmp(argv[1], "Thin") == 0)
 	{
@@ -57,6 +94,8 @@ int main(int argc, char *argv[])
 
 		time_t Heuristic_start = clock();
 		vector<long> Heuristic_sol = Greedy_Heuristic(g, k, b);
+		
+
 		cerr << "Time that spent in Heuristic in sec is: " << (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC << endl;
 		double Heuristic_time = (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC;
 
