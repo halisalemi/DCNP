@@ -10,6 +10,8 @@
 
 string itos(int i);
 
+//Preprocessing function
+vector<long> Preprocessing(KGraph &g);
 
 //Betweenneess Centrality (BC) function
 vector<long> BC(KGraph &g, long B);
