@@ -46,6 +46,18 @@ int main(int argc, char *argv[])
 		cerr << "ERROR: Not enough arguments.";
 
 
+	else if (strcmp(argv[1], "Preprocessing") == 0)
+	{
+		KGraph g(argv[3], argv[3], argv[2]);
+		
+		time_t Preprocessing_start = clock();
+		vector<long> solution = Preprocessing(g);
+		cout << "Preprocessing time is " << (double)(clock() - Preprocessing_start) / CLOCKS_PER_SEC << " " << endl;
+		cerr << "Size of I is " << solution.size() << endl;
+		for (long i = 0; i < solution.size(); i++) cerr << solution[i] << " ";
+	}
+
+
 	else if (strcmp(argv[1], "Heuristic") == 0)
 	{
 		KGraph g(argv[3], argv[3], argv[2]);
@@ -56,6 +68,14 @@ int main(int argc, char *argv[])
 
 		time_t Heuristic_start = clock();
 		vector<long> Heuristic_sol = Greedy_Heuristic(g, k, b);
+
+		cerr << "Number of nodes are " << Heuristic_sol.size() << endl;
+		cerr << "node are ";
+		for (long i = 0; i < Heuristic_sol.size(); i++)
+		{
+			cerr << Heuristic_sol[i] << " "; 
+		}
+		cerr << "\n";
 
 		vector<long> close_vertices;
 		long num_close_vertices = 0;
@@ -78,7 +98,7 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
-		cout << "heur is " << 2 * num_close_vertices << endl;
+		cout << "heuristic solution is " << 2 * num_close_vertices << endl;
 		cout << "Time that spent in Heuristic in sec is: " << (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC << endl;
 	}
 
@@ -92,6 +112,7 @@ int main(int argc, char *argv[])
 		long b = atol(argv[5]); //budget 
 		time_t start = clock();
 
+		
 		time_t Heuristic_start = clock();
 		vector<long> Heuristic_sol = Greedy_Heuristic(g, k, b);
 		
@@ -99,7 +120,6 @@ int main(int argc, char *argv[])
 		cerr << "Time that spent in Heuristic in sec is: " << (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC << endl;
 		double Heuristic_time = (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC;
 
-		//vector<long> Heuristic_sol;
 
 		bool subOpt;
 		vector<long> Deleted = solveDCNP_thin_formulation(g, k, b, Heuristic_sol, subOpt);
@@ -226,6 +246,44 @@ int main(int argc, char *argv[])
 		cout << Deleted[i] << " ";
 		}
 		cout << "\n";*/
+	}
+
+	else if (strcmp(argv[1], "CNP") == 0)
+	{
+		KGraph g(argv[3], argv[3], argv[2]);
+
+		long b = atol(argv[4]); //budget 
+		time_t start = clock();
+
+		long k = g.n - 1;
+
+
+		time_t Heuristic_start = clock();
+		vector<long> Heuristic_sol = Greedy_Heuristic(g, k, b);
+
+
+		cerr << "Time that spent in Heuristic in sec is: " << (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC << endl;
+		double Heuristic_time = (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC;
+
+
+		bool subOpt;
+		vector<long> Deleted = solveDCNP_thin_formulation_fractional(g, k, b, Heuristic_sol, subOpt);
+
+		/*cout << "time in sec: " << (double)(clock() - start) / CLOCKS_PER_SEC << endl;
+		cout << "# nodes deleted equal " << Deleted.size() << endl;
+		cout << "** Label of deleted Node(s) is(are) ";
+		for (long i = 0; i < Deleted.size(); i++)
+		cout << Deleted[i] << " ";*/
+
+		//Use the following for batch files:
+		cout << g.name << " " << k << " " << b << " ";
+		cout << (double)(clock() - start) / CLOCKS_PER_SEC << " ";
+		cout << Heuristic_time << " ";
+		for (long i = 0; i < Deleted.size(); i++)
+		{
+			cout << Deleted[i] << " ";
+		}
+		cout << "\n";
 	}
 
 	else
