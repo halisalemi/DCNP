@@ -29,63 +29,6 @@ double fractional_separation::TotalCallbackTime = 0;
 long fractional_separation::numLazyCuts = 0;
 
 
-vector<vector<long>> k_hop_SP(KGraph &g, long source, long s, vector<long>dist_from_source)
-{
-	//initializing edge weights
-	//g.Edgeweight(g);
-	double infty = 1000000;
-
-	vector<long> y(g.n);
-	y[0] = 0; y[1] = 0.4; y[2] = 0.1;
-
-	//vector<long> dist_from_source = g.ShortestPathsUnweighted(source);
-
-
-	vector<double> temp1(s + 1, infty);
-	vector<long> temp2(s + 1, 1000);
-	vector < vector<double> > delta(g.n, temp1);
-	vector< vector<long> > P(g.n, temp2);
-
-
-	for (long k = 0; k <= s; k++)
-	{
-		delta[source][k] = y[source];
-		P[source][k] = source;
-	}
-
-	/*for (long i = 0; i < g.degree[source]; i++)
-	{
-	long u = g.adj[source][i];
-	delta[u][1] = g.weight[source][i];
-	P[u][1] = source;
-	}*/
-
-	for (long k = 1; k <= s; k++)
-	{
-		for (long v = 0; v < g.n; v++)
-		{
-			if (v == source || dist_from_source[v] > k) continue;
-
-			for (long i = 0; i < g.degree[v]; i++)
-			{
-				long u = g.adj[v][i];
-				if (delta[u][k - 1] + y[v] < delta[v][k])
-				{
-					P[v][k] = u;
-					delta[v][k] = delta[u][k - 1] + y[v];
-				}
-			}
-		}
-	}
-	for (long k = 0; k <= s; k++)
-	{
-		for (long v = 0; v < g.n; v++)
-		{
-			cerr << "d[" << v << "][" << k << "] is " << delta[v][k] << endl;
-		}
-	}
-	return P;
-}
 
 void integer_separation::callback()
 {
@@ -93,16 +36,6 @@ void integer_separation::callback()
 	{
 		if (where == GRB_CB_MIPSOL)
 		{
-			/*cerr << "Found a new MIP incumbent" << endl;
-
-			double objbest = getDoubleInfo(GRB_CB_MIPSOL_OBJBST);
-			cerr << "Current best objective = " << objbest << endl;
-
-			double nodecnt = getDoubleInfo(GRB_CB_MIPSOL_NODCNT);
-			double objbnd = getDoubleInfo(GRB_CB_MIPSOL_OBJBND);
-			cerr << "For node " << nodecnt << ", current best objective bound " << objbnd << endl;*/
-
-
 			numCallbacks++;
 			time_t start = clock();
 
@@ -155,46 +88,6 @@ void integer_separation::callback()
 				}
 			}
 		}
-		/*	else if (where == GRB_CB_MIPNODE)
-		{
-		cerr << "Currently exploring a MIP node" << endl;
-
-		double objbest = getDoubleInfo(GRB_CB_MIPNODE_OBJBST);
-		cerr << "Current best objective = " << objbest << endl;
-
-		double nodecnt = getDoubleInfo(GRB_CB_MIPNODE_NODCNT);
-		double objbnd = getDoubleInfo(GRB_CB_MIPNODE_OBJBND);
-		cerr << "For node " << nodecnt  << ", current best objective bound " << objbnd << endl;
-
-		}
-
-		else if (where == GRB_CB_MIP)
-		{
-		cerr << "Currently in MIP" << endl;
-
-		double objbest = getDoubleInfo(GRB_CB_MIP_OBJBST);
-		cerr << "Current best objective = " << objbest << endl;
-
-		double nodecnt = getDoubleInfo(GRB_CB_MIP_NODCNT);
-		double objbnd = getDoubleInfo(GRB_CB_MIP_OBJBND);
-		cerr << "For node " << nodecnt << ", current best objective bound " << objbnd << endl;
-		}
-
-
-		else if (where == GRB_CB_SIMPLEX)
-		{
-		cerr << "Currently in SIMPLEX." << endl;
-		double objvalue = getDoubleInfo(GRB_CB_SPX_OBJVAL);
-		cerr << "Current simplex obj value is " << objvalue << endl;
-		}
-
-		else if (where == GRB_CB_BARRIER)
-		{
-
-		cerr << "Currently in BARRIER." << endl;
-		double primalobjval = getDoubleInfo(GRB_CB_BARRIER_PRIMOBJ);
-		cerr << "Primal objective value for current barrier iterate is " << primalobjval <<endl;
-		}*/
 	}
 	catch (GRBException e) {
 		cout << "Error number: " << e.getErrorCode() << endl;
@@ -212,14 +105,6 @@ void fractional_separation::callback()
 	{
 		if (where == GRB_CB_MIPSOL)
 		{
-			/*cerr << "Found a new MIP incumbent" << endl;
-
-			double objbest = getDoubleInfo(GRB_CB_MIPSOL_OBJBST);
-			cerr << "Current best objective = " << objbest << endl;
-
-			double nodecnt = getDoubleInfo(GRB_CB_MIPSOL_NODCNT);
-			double objbnd = getDoubleInfo(GRB_CB_MIPSOL_OBJBND);
-			cerr << "For node " << nodecnt << ", current best objective bound " << objbnd << endl;*/
 
 			numCallbacks++;
 			time_t start = clock();
@@ -248,12 +133,10 @@ void fractional_separation::callback()
 			vector<long> distance;
 			for (long u = 0; u < g2.n; u++)
 			{
-				vector<long>original_distance = g2.ShortestPathsUnweighted(u);
 				distance = g2.ShortestPathsUnweighted(u, NonDeletedVertices, predecessor); //g2 is duplicate of original graph.
 				for (long v = u + 1; v < g2.n; v++)
 				{
 					long counter = 0;
-					if (original_distance[v] == 1) continue; //all connector inequalities are satisfied
 					if (distance[v] <= k1 && x[hashing[u*g2.n + v]] == 0)
 					{
 						GRBLinExpr expr = vars1[hashing[u*g2.n + v]];
@@ -288,7 +171,6 @@ void fractional_separation::callback()
 			y = getNodeRel(vars, g1.n);
 
 			//get the solution vector (for x variables) from Gurobi
-			//double *x = getNodeRel(vars1, g1.m);
 			double *x = new double[g1.m];
 			x = getNodeRel(vars1, g1.m);
 
@@ -339,7 +221,7 @@ void fractional_separation::callback()
 				}
 				if (min < 0.9)
 				{
-					cerr << "min is " << min << endl;
+					//cerr << "min is " << min << endl;
 					GRBLinExpr expr = vars1[hashing[i*g2.n + t]] + vars[t] + vars[i];
 					long q = p[t][k1];
 					long ss = k1 - 1;
@@ -350,7 +232,7 @@ void fractional_separation::callback()
 						ss--;
 					}
 					addCut(expr >= 1);
-					//cerr << "add cut" << endl;
+					//cerr << "." << endl;
 				}
 			}
 		}
@@ -416,6 +298,13 @@ vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> 
 			}
 		}
 
+		cerr << "Fixing variables" << endl;
+		vector<long> solution = Preprocessing(g);
+		for (long i = 0; i < solution.size(); i++)
+		{
+			model.addConstr(Y[solution[i]] == 0);
+		}
+
 
 		cerr << "Adding constraints for edges." << endl;
 		for (long u = 0; u < g.n; u++)
@@ -477,7 +366,7 @@ vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> 
 		//					{
 		//						if (all_dist[v][j] == 1)
 		//						{
-		//							if (all_dist[i][v] == 2 & all_dist[u][j] == 2 &&j>i)
+		//							if (all_dist[i][v] == 2 && all_dist[u][j] == 2 &&j>i)
 		//							{
 		//								model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[u] + Y[v] + Y[j] >= 1);
 		//								length_3_connecotrs++;
@@ -501,11 +390,11 @@ vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> 
 				{
 					for (long w = v + 1; w < g.n; w++)
 					{
-						if (all_dist[u][w] == 2 & all_dist[v][w] == 1)
+						if (all_dist[u][w] == 2 && all_dist[v][w] == 1)
 						{
 							for (long x = w + 1; x < g.n; x++)
 							{
-								if (all_dist[u][x] == 3 & all_dist[v][x] == 2 & all_dist[w][x] == 1 & x > u)
+								if (all_dist[u][x] == 3 && all_dist[v][x] == 2 && all_dist[w][x] == 1 && x > u)
 								{
 									model.addConstr(X[hash_edges[u*g.n + x]] + Y[u] + Y[v] + Y[w] + Y[x] >= 1);
 								}
@@ -555,61 +444,7 @@ vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> 
 					X[hash_edges[i*g.n + j]].set(GRB_DoubleAttr_Start, 1);
 				}
 			}
-		}
-
-		vector<long> Rmap1;
-		vector<long> Rmap2;
-		vector<long> Neighbors_of_i;
-		vector<long> simplicial;
-		for (long i = 0; i < g.n; i++)
-		{
-			Neighbors_of_i.push_back(i);
-			for (long counter = 0; counter < g.degree[i]; counter++)
-			{
-				Neighbors_of_i.push_back(g.adj[i][counter]);
-			}
-			sort(Neighbors_of_i.begin(), Neighbors_of_i.end());
-			KGraph gs = g.CreateInducedGraph(Neighbors_of_i, Rmap1);
-			if (gs.m == (gs.n*(gs.n - 1) / 2))
-			{
-				simplicial.push_back(i);
-			}
-			Neighbors_of_i.clear();
-		}
-		sort(simplicial.begin(), simplicial.end());
-		KGraph gnew = g.CreateInducedGraph(simplicial, Rmap2);
-
-		vector<long> final;
-		vector< vector< long> > components;
-		vector<long> degreeZero;
-		gnew.FindConnectedComponents(components, degreeZero);
-
-		/*cerr << "Number of components is " << components.size()+degreeZero.size() << endl;
-		cerr << "vertices with degree equals 0 are ";*/
-		for (long i = 0; i < degreeZero.size(); i++)
-		{
-			//cerr << simplicial[Rmap2[simplicial[degreeZero[i]]]] << " ";
-			final.push_back(simplicial[Rmap2[simplicial[degreeZero[i]]]]);
-		}
-		//cerr << "\n";
-
-		for (long i = 0; i < components.size(); i++)
-		{
-			for (long j = 0; j < components[i].size(); j++)
-			{
-				//cerr << "Here, we have " << simplicial[Rmap2[simplicial[components[i][j]]]] << " ";
-				final.push_back(simplicial[Rmap2[simplicial[components[i][j]]]]);
-				break;
-			}
-		}
-
-		//cerr << "final size is " << final.size() << endl;
-		for (long i = 0; i < final.size(); i++)
-		{
-			model.addConstr(Y[final[i]] == 0);
-		}
-
-
+		}	
 
 		cerr << "Optimizing." << endl;
 		model.optimize();
@@ -667,7 +502,8 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 	try
 	{
 		GRBEnv env = GRBEnv();
-		//env.set(GRB_IntParam_OutputFlag, 0);
+		env.set(GRB_IntParam_OutputFlag, 0);
+		//env.set(GRB_IntParam_Method, 3); //use barrier method to solve LP relaxation.
 		env.set(GRB_DoubleParam_TimeLimit, 3600);
 		GRBModel model = GRBModel(env);
 		model.getEnv().set(GRB_DoubleParam_MIPGap, 0.0);
@@ -700,6 +536,14 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 			}
 		}
 
+
+		cerr << "Fixing variables" << endl;
+		vector<long> solution = Preprocessing(g);
+		for (long i = 0; i < solution.size(); i++)
+		{
+			model.addConstr(Y[solution[i]] == 0);
+		}
+
 		cerr << "Adding constraints for edges." << endl;
 		for (long u = 0; u < g.n; u++)
 		{
@@ -711,60 +555,60 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 		}
 
 
-		//long length_2_connecotrs = 0;
-		//cerr << "Adding constraints for length-2 connectors" << endl;
-		//for (long u = 0; u < g.n; u++)
-		//{
-		//	for (long counter1 = 0; counter1 < g.degree[u]; counter1++)
-		//	{
-		//		vector<bool> neighbors(g.n, 0);
-		//		long i = g.adj[u][counter1];
-		//		for (long counter2 = 0; counter2 < g.degree[i]; counter2++)
-		//		{
-		//			neighbors[g.adj[i][counter2]] = true;
-		//		}
-		//		for (long counter3 = 0; counter3 < g.degree[u]; counter3++)
-		//		{
-		//			long j = g.adj[u][counter3];
-		//			if (neighbors[j] == false && j > i)
-		//			{
-		//				model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[j] + Y[u] >= 1);
-		//				length_2_connecotrs++;
-		//			}
-		//		}
-		//	}
-		//}
+		long length_2_connecotrs = 0;
+		cerr << "Adding constraints for length-2 connectors" << endl;
+		for (long u = 0; u < g.n; u++)
+		{
+			for (long counter1 = 0; counter1 < g.degree[u]; counter1++)
+			{
+				vector<bool> neighbors(g.n, 0);
+				long i = g.adj[u][counter1];
+				for (long counter2 = 0; counter2 < g.degree[i]; counter2++)
+				{
+					neighbors[g.adj[i][counter2]] = true;
+				}
+				for (long counter3 = 0; counter3 < g.degree[u]; counter3++)
+				{
+					long j = g.adj[u][counter3];
+					if (neighbors[j] == false && j > i)
+					{
+						model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[j] + Y[u] >= 1);
+						length_2_connecotrs++;
+					}
+				}
+			}
+		}
 		//cerr << "Number of minimal length-2 connecter inequalities is " << length_2_connecotrs << endl;
 
-		//cerr << "Adding some of the length-3 i,j-connectors" << endl;
-		//   vector < vector<long>> all_dist;
-		//for (long i = 0; i < g.n; i++)
-		//{
-		//	vector<long> dist_from_i_to = g.ShortestPathsUnweighted(i);
-		//	all_dist.push_back(dist_from_i_to);
-		//}
-		//for (long u = 0; u < g.n; u++)
-		//{
-		//	for (long v = u+1; v < g.n; v++) //v=0
-		//	{
-		//		if (all_dist[u][v] == 1)
-		//		{
-		//			for (long w = v+1; w < g.n; w++) //w=0
-		//			{
-		//				if (all_dist[u][w] == 2 & all_dist[v][w] == 1)
-		//				{
-		//					for (long x = w+1; x < g.n; x++) //x=0 
-		//					{
-		//						if (all_dist[u][x] == 3 & all_dist[v][x] == 2 & all_dist[w][x] == 1 & x > u)
-		//						{
-		//							model.addConstr(X[hash_edges[u*g.n + x]] + Y[u] + Y[v] + Y[w] + Y[x] >= 1);
-		//						}
-		//					}
-		//				}
-		//			}
-		//		}
-		//	}
-		//}
+		cerr << "Adding some of the length-3 i,j-connectors" << endl;
+		vector < vector<long>> all_dist;
+		for (long i = 0; i < g.n; i++)
+		{
+			vector<long> dist_from_i_to = g.ShortestPathsUnweighted(i);
+			all_dist.push_back(dist_from_i_to);
+		}
+		for (long u = 0; u < g.n; u++)
+		{
+			for (long v = u+1; v < g.n; v++) //v=0
+			{
+				if (all_dist[u][v] == 1)
+				{
+					for (long w = v+1; w < g.n; w++) //w=0
+					{
+						if (all_dist[u][w] == 2 && all_dist[v][w] == 1)
+						{
+							for (long x = w+1; x < g.n; x++) //x=0 
+							{
+								if (all_dist[u][x] == 3 && all_dist[v][x] == 2 && all_dist[w][x] == 1 && x > u)
+								{
+									model.addConstr(X[hash_edges[u*g.n + x]] + Y[u] + Y[v] + Y[w] + Y[x] >= 1);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 
 
 		cerr << "Adding budget constraints" << endl;
@@ -865,11 +709,10 @@ vector<long> solveDCNP_path_like(KGraph &g, long k, long b, vector<long> Heurist
 	{
 		GRBEnv env = GRBEnv();
 		env.set(GRB_IntParam_OutputFlag, 0);
-		env.set(GRB_IntParam_Method, 3);
+		env.set(GRB_IntParam_Method, 3); //use barrier method to solve LP relaxation.
 		env.set(GRB_DoubleParam_TimeLimit, 3600);
 		GRBModel model = GRBModel(env);
 		model.getEnv().set(GRB_DoubleParam_MIPGap, 0.0);
-		//model.getEnv().set(GRB_IntParam_LazyConstraints, 1);
 
 		GRBVar **X = new GRBVar*[g.n];
 		GRBVar *Y = model.addVars(g.n, GRB_BINARY);
@@ -877,29 +720,48 @@ vector<long> solveDCNP_path_like(KGraph &g, long k, long b, vector<long> Heurist
 
 		for (long i = 0; i < g.n; i++)
 		{
-			X[i] = model.addVars(g.n, GRB_BINARY);
+			X[i] = model.addVars(g.n, GRB_CONTINUOUS);
 		}
 		model.update();
 
 
 		cerr << "Adding objective function." << endl;
+		GRBLinExpr Objective = 0;
 		for (long i = 0; i < g.n; i++)
 		{
 			for (long j = 0; j < g.n; j++)
 			{
-				X[i][j].set(GRB_DoubleAttr_Obj, 1);
+				Objective += X[i][j];
 			}
 		}
-		model.set(GRB_IntAttr_ModelSense, GRB_MINIMIZE);
+		Objective *= 2;
+		model.setObjective(Objective, GRB_MINIMIZE);
 		model.update();
+
+
+		cerr << "Fixing variables" << endl;
+		vector<long> solution = Preprocessing(g);
+		for (long i = 0; i < solution.size(); i++)
+		{
+			model.addConstr(Y[solution[i]] == 0);
+		}
+
+
+		vector < vector<long>> all_dist;
+		for (long i = 0; i < g.n; i++)
+		{
+			vector<long> dist_from_i_to = g.ShortestPathsUnweighted(i);
+			all_dist.push_back(dist_from_i_to);
+		}
+
+
 
 		cerr << "Adding constraint z_C + \sum_{v \in C}{y_v} >= 1" << endl;
 		for (long v = 0; v < g.n; v++)
 		{
-			vector<long> dist_from_v_to = g.ShortestPathsUnweighted(v);
 			for (long u = v + 1; u < g.n; u++)
 			{
-				if (dist_from_v_to[u] == 1)
+				if (all_dist[v][u] == 1)
 				{
 					long minuv = min(u, v);
 					long maxuv = max(u, v);
@@ -907,25 +769,24 @@ vector<long> solveDCNP_path_like(KGraph &g, long k, long b, vector<long> Heurist
 					model.addConstr(Z[it->second] + Y[u] + Y[v] >= 1);
 				}
 
-				if (dist_from_v_to[u] == 2 || dist_from_v_to[u] == 3)
+				if (all_dist[v][u] == 2 || all_dist[v][u] == 3)
 				{
-					vector<long> dist_from_u_to = g.ShortestPathsUnweighted(u);
-					for (long v_neighbors_iterator = 0; v_neighbors_iterator < g.adj[v].size(); v_neighbors_iterator++)
+					for (long v_neighbors_iterator = 0; v_neighbors_iterator < g.degree[v]; v_neighbors_iterator++)
 					{
 						long ii = g.adj[v][v_neighbors_iterator];
-						if (dist_from_u_to[ii] == 1)
+						if (all_dist[u][ii] == 1)
 						{
 							vector<long> sortedsubset = sortnodes(u, v, ii);
 							std::map<std::vector<long>, long>::iterator it = map.find(sortedsubset);
 							model.addConstr(Z[it->second] + Y[u] + Y[v] + Y[ii] >= 1);
 						}
 
-						if (dist_from_u_to[ii] == 2)
+						if (all_dist[u][ii] == 2)
 						{
-							for (long ii_neighbors_iterator = 0; ii_neighbors_iterator < g.adj[ii].size(); ii_neighbors_iterator++)
+							for (long ii_neighbors_iterator = 0; ii_neighbors_iterator < g.degree[ii]; ii_neighbors_iterator++)
 							{
 								long jj = g.adj[ii][ii_neighbors_iterator];
-								if (dist_from_u_to[jj] == 1 && dist_from_v_to[jj] == 2)
+								if (all_dist[u][jj] == 1 && all_dist[v][jj] == 2)
 								{
 									vector<long> sortedsubset = sort4nodes(u, v, ii, jj);
 									std::map<std::vector<long>, long>::iterator it = map.find(sortedsubset);
@@ -938,38 +799,36 @@ vector<long> solveDCNP_path_like(KGraph &g, long k, long b, vector<long> Heurist
 			}
 		}
 
-		cerr << "Adding x_[i][j] >= Z_c constraints." << endl;
+		cerr << "Adding x_[i][j] >= z_C constraints." << endl;
 		for (long v = 0; v < g.n; v++)
 		{
-			vector<long> dist_from_v_to = g.ShortestPathsUnweighted(v);
 			for (long u = v + 1; u < g.n; u++)
 			{
-				if (dist_from_v_to[u] > 3) continue;
-				if (dist_from_v_to[u] == 1)
+				if (all_dist[v][u] > 3) continue;
+				if (all_dist[v][u] == 1)
 				{
 					long minuv = min(u, v);
 					long maxuv = max(u, v);
 					std::map<std::vector<long>, long>::iterator it = map.find({ minuv, maxuv });
 					model.addConstr(X[u][v] >= Z[it->second]);
 				}
-				if (dist_from_v_to[u] == 2 || dist_from_v_to[u] == 3)
+				if (all_dist[v][u] == 2 || all_dist[v][u] == 3)
 				{
-					vector<long> dist_from_u_to = g.ShortestPathsUnweighted(u);
-					for (long v_neighbors_iterator = 0; v_neighbors_iterator < g.adj[v].size(); v_neighbors_iterator++)
+					for (long v_neighbors_iterator = 0; v_neighbors_iterator < g.degree[v]; v_neighbors_iterator++)
 					{
 						long ii = g.adj[v][v_neighbors_iterator];
-						if (dist_from_u_to[ii] == 1)
+						if (all_dist[u][ii] == 1)
 						{
 							vector<long> sortedsubset = sortnodes(u, v, ii);
 							std::map<std::vector<long>, long>::iterator it = map.find(sortedsubset);
 							model.addConstr(X[u][v] >= Z[it->second]);
 						}
-						if (dist_from_u_to[ii] == 2)
+						if (all_dist[u][ii] == 2)
 						{
-							for (long ii_neighbors_iterator = 0; ii_neighbors_iterator < g.adj[ii].size(); ii_neighbors_iterator++)
+							for (long ii_neighbors_iterator = 0; ii_neighbors_iterator < g.degree[ii]; ii_neighbors_iterator++)
 							{
 								long jj = g.adj[ii][ii_neighbors_iterator];
-								if (dist_from_u_to[jj] == 1 && dist_from_v_to[jj] == 2)
+								if (all_dist[u][jj] == 1 && all_dist[v][jj] == 2)
 								{
 									vector<long> sortedsubset = sort4nodes(u, v, ii, jj);
 									std::map<std::vector<long>, long>::iterator it = map.find(sortedsubset);
@@ -979,15 +838,6 @@ vector<long> solveDCNP_path_like(KGraph &g, long k, long b, vector<long> Heurist
 						}
 					}
 				}
-			}
-		}
-
-		cerr << "Adding X[i][j] == X[j][i] constraints." << endl;
-		for (long i = 0; i < g.n; i++)
-		{
-			for (long j = 0; j < g.n; j++)
-			{
-				model.addConstr(X[i][j] == X[j][i]);
 			}
 		}
 
@@ -1071,6 +921,7 @@ vector<long> solveDCNP_path_like(KGraph &g, long k, long b, vector<long> Heurist
 	return Deleted;
 }
 
+
 vector<long> solveDCNP_Veremyev(KGraph &g, long k, long b, vector<long> Heuristic_sol, bool &subOpt)
 {
 	vector<long> Deleted;
@@ -1122,7 +973,6 @@ vector<long> solveDCNP_Veremyev(KGraph &g, long k, long b, vector<long> Heuristi
 		model.update();
 
 
-		//Fixing variables
 		cerr << "Fixing variables." << endl;
 		for (long i = 0; i < g.n; i++)
 		{
@@ -1294,6 +1144,56 @@ vector<long> solveDCNP_Veremyev(KGraph &g, long k, long b, vector<long> Heuristi
 	return Deleted;
 }
 
+//Preprocessing function
+vector<long> Preprocessing(KGraph &g)
+{
+	vector<long> Rmap1;
+	vector<long> Rmap2;
+	vector<long> Neighbors_of_i;
+	vector<long> simplicial;
+	for (long i = 0; i < g.n; i++)
+	{
+		Neighbors_of_i.push_back(i);
+		for (long counter = 0; counter < g.degree[i]; counter++)
+		{
+			Neighbors_of_i.push_back(g.adj[i][counter]);
+		}
+		sort(Neighbors_of_i.begin(), Neighbors_of_i.end());
+		KGraph gs = g.CreateInducedGraph(Neighbors_of_i, Rmap1);
+		if (gs.m == (gs.n*(gs.n - 1) / 2))
+		{
+			simplicial.push_back(i);
+		}
+		Neighbors_of_i.clear();
+	}
+	sort(simplicial.begin(), simplicial.end());
+	KGraph gnew = g.CreateInducedGraph(simplicial, Rmap2);
+
+	vector<long> set_I;
+	vector< vector< long> > components;
+	vector<long> degreeZero;
+	gnew.FindConnectedComponents(components, degreeZero);
+
+	/*cerr << "Number of components is " << components.size()+degreeZero.size() << endl;
+	cerr << "vertices with degree equals 0 are ";*/
+	for (long i = 0; i < degreeZero.size(); i++)
+	{
+		//cerr << simplicial[Rmap2[simplicial[degreeZero[i]]]] << " ";
+		set_I.push_back(simplicial[Rmap2[simplicial[degreeZero[i]]]]);
+	}
+	//cerr << "\n";
+
+	for (long i = 0; i < components.size(); i++)
+	{
+		for (long j = 0; j < components[i].size(); j++)
+		{
+			//cerr << "Here, we have " << simplicial[Rmap2[simplicial[components[i][j]]]] << " ";
+			set_I.push_back(simplicial[Rmap2[simplicial[components[i][j]]]]);
+			break;
+		}
+	}
+	return set_I;
+}
 
 
 //Based on algorithm in paper "A faster algorithm for betweenness centerality".
@@ -1404,7 +1304,7 @@ vector<long> Greedy_Heuristic(KGraph &g, long k, long b)
 	{
 		while (D.size() > b - delta_b)
 		{
-			if (D.size() == b & obj <= q_star)
+			if (D.size() == b && obj <= q_star)
 			{
 				D_Star = D;
 				q_star = obj;
@@ -1454,66 +1354,46 @@ vector<long> Greedy_Heuristic(KGraph &g, long k, long b)
 
 		while (D.size() < b + delta_b)
 		{
-			if (D.size() == b & obj <= q_star)
+			if (D.size() == b && obj <= q_star)
 			{
 				D_Star = D;
 				q_star = obj;
 				N++;
 			}
 
-			vector<long>far_apart;
-			long num_far_apart_vertices = 0;
+			vector<long>close_vertices;
 
 			for (long j = 0; j < D_copy.size(); j++)
 			{
-				vector<bool> new_nodes(g.n, true);
+				vector<bool> current_nondeleted_vertices(g.n, true);
 				for (long i = 0; i < D.size(); i++)
 				{
-					new_nodes[D[i]] = false;
+					current_nondeleted_vertices[D[i]] = false;
 				}
-				new_nodes[D_copy[j]] = false;
+				current_nondeleted_vertices[D_copy[j]] = false;
 
 				for (long v = 0; v < g.n; v++)
 				{
-					vector <long> dist_from_v = g.ShortestPathsUnweighted(v, new_nodes);
+					vector <long> dist_from_v = g.ShortestPathsUnweighted(v, current_nondeleted_vertices);
 					for (long w = v + 1; w < g.n; w++)
 					{
-						if (dist_from_v[w] > k)
+						if (dist_from_v[w] <= k)
 						{
-							num_far_apart_vertices++;
+							obj++;
 						}
 					}
 				}
-				far_apart.push_back(num_far_apart_vertices);
-				num_far_apart_vertices = 0;
+				close_vertices.push_back(obj);
+				obj = 0;
+				current_nondeleted_vertices[D_copy[j]] = true;
 			}
 
-			long max_size = *max_element(far_apart.begin(), far_apart.end());
+			long min_size = *min_element(close_vertices.begin(), close_vertices.end());
 			for (long i = 0; i < D_copy.size(); i++)
 			{
-				if (far_apart[i] == max_size)
+				if (close_vertices[i] == min_size)
 				{
 					D.push_back(D_copy[i]);
-				}
-			}
-
-			vector<bool> remained_nodes(g.n, true);
-			for (long i = 0; i < D.size(); i++)
-			{
-				remained_nodes[D[i]] = false;
-			}
-
-			obj = 0;
-
-			for (long v = 0; v < g.n; v++)
-			{
-				vector <long> dist_from_v = g.ShortestPathsUnweighted(v, remained_nodes);
-				for (long w = v + 1; w < g.n; w++)
-				{
-					if (dist_from_v[w] <= k)
-					{
-						obj++;
-					}
 				}
 			}
 		}
