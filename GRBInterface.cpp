@@ -60,25 +60,25 @@ void integer_separation::callback()
 
 			//find a violated length-k i,j-connector inequality (if any exist)
 			vector<long> predecessor;
-			vector<long> distance;
-			for (long u = 0; u < g2.n; u++)
+			vector<long> distance_from_i;
+			for (long i = 0; i < g2.n; i++)
 			{
-				vector<long>original_distance = g2.ShortestPathsUnweighted(u);
-				distance = g2.ShortestPathsUnweighted(u, NonDeletedVertices, predecessor); //g2 is duplicate of original graph.
-				for (long v = u + 1; v < g2.n; v++)
+				distance_from_i = g2.ShortestPathsUnweighted(i, NonDeletedVertices, predecessor);
+				for (long counter = 0; counter < g1.degree[i]; counter++)
 				{
-					long counter = 0;
-					if (original_distance[v] == 1) continue; //all connector inequalities are satisfied
-					if (distance[v] <= k1 && x[hashing[u*g2.n + v]] == 0)
+					long j = g1.adj[i][counter];
+					if (j > i && distance_from_i[j] <= k1 && x[hashing[i*g2.n + j]] == 0)
 					{
-						GRBLinExpr expr = vars1[hashing[u*g2.n + v]];
-						long i = v;
-						while (i != u)
+						GRBLinExpr expr = vars1[hashing[i*g2.n + j]] + vars[i] + vars[j];
+
+						long q = predecessor[j];
+						long ss = k1 - 1;
+						for (long counter = 2; counter <= k1; counter++)
 						{
-							expr += vars[i];
-							i = predecessor[i];
+							expr += vars[q];
+							q = predecessor[q];
+							ss--;
 						}
-						expr += vars[i];
 						addLazy(expr >= 1);
 						counter++;
 						numLazyCuts++;
@@ -130,23 +130,25 @@ void fractional_separation::callback()
 
 			//find a violated length-k i,j-connector inequality (if any exist)
 			vector<long> predecessor;
-			vector<long> distance;
-			for (long u = 0; u < g2.n; u++)
+			vector<long> distance_from_i;
+			for (long i = 0; i < g2.n; i++)
 			{
-				distance = g2.ShortestPathsUnweighted(u, NonDeletedVertices, predecessor); //g2 is duplicate of original graph.
-				for (long v = u + 1; v < g2.n; v++)
+				distance_from_i = g2.ShortestPathsUnweighted(i, NonDeletedVertices, predecessor);
+				for (long counter = 0; counter < g1.degree[i]; counter++)
 				{
-					long counter = 0;
-					if (distance[v] <= k1 && x[hashing[u*g2.n + v]] == 0)
+					long j = g1.adj[i][counter];
+					if (j > i && distance_from_i[j] <= k1 && x[hashing[i*g2.n + j]] == 0)
 					{
-						GRBLinExpr expr = vars1[hashing[u*g2.n + v]];
-						long i = v;
-						while (i != u)
+						GRBLinExpr expr = vars1[hashing[i*g2.n + j]] + vars[i] + vars[j];
+
+						long q = predecessor[j];
+						long ss = k1 - 1;
+						for (long counter = 2; counter <= k1; counter++)
 						{
-							expr += vars[i];
-							i = predecessor[i];
+							expr += vars[q];
+							q = predecessor[q];
+							ss--;
 						}
-						expr += vars[i];
 						addLazy(expr >= 1);
 						counter++;
 						numLazyCuts++;
@@ -502,9 +504,9 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 	try
 	{
 		GRBEnv env = GRBEnv();
-		env.set(GRB_IntParam_OutputFlag, 0);
-		//env.set(GRB_IntParam_Method, 3); //use barrier method to solve LP relaxation.
-		env.set(GRB_DoubleParam_TimeLimit, 3600);
+		//env.set(GRB_IntParam_OutputFlag, 0);
+		env.set(GRB_IntParam_Method, 3); //use barrier method to solve LP relaxation.
+		env.set(GRB_DoubleParam_TimeLimit, 10800);
 		GRBModel model = GRBModel(env);
 		model.getEnv().set(GRB_DoubleParam_MIPGap, 0.0);
 		model.getEnv().set(GRB_IntParam_LazyConstraints, 1);
@@ -578,37 +580,37 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 				}
 			}
 		}
-		//cerr << "Number of minimal length-2 connecter inequalities is " << length_2_connecotrs << endl;
+		////cerr << "Number of minimal length-2 connecter inequalities is " << length_2_connecotrs << endl;
 
-		cerr << "Adding some of the length-3 i,j-connectors" << endl;
-		vector < vector<long>> all_dist;
-		for (long i = 0; i < g.n; i++)
-		{
-			vector<long> dist_from_i_to = g.ShortestPathsUnweighted(i);
-			all_dist.push_back(dist_from_i_to);
-		}
-		for (long u = 0; u < g.n; u++)
-		{
-			for (long v = u+1; v < g.n; v++) //v=0
-			{
-				if (all_dist[u][v] == 1)
-				{
-					for (long w = v+1; w < g.n; w++) //w=0
-					{
-						if (all_dist[u][w] == 2 && all_dist[v][w] == 1)
-						{
-							for (long x = w+1; x < g.n; x++) //x=0 
-							{
-								if (all_dist[u][x] == 3 && all_dist[v][x] == 2 && all_dist[w][x] == 1 && x > u)
-								{
-									model.addConstr(X[hash_edges[u*g.n + x]] + Y[u] + Y[v] + Y[w] + Y[x] >= 1);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+		//cerr << "Adding some of the length-3 i,j-connectors" << endl;
+		//vector < vector<long>> all_dist;
+		//for (long i = 0; i < g.n; i++)
+		//{
+		//	vector<long> dist_from_i_to = g.ShortestPathsUnweighted(i);
+		//	all_dist.push_back(dist_from_i_to);
+		//}
+		//for (long u = 0; u < g.n; u++)
+		//{
+		//	for (long v = u+1; v < g.n; v++) //v=0
+		//	{
+		//		if (all_dist[u][v] == 1)
+		//		{
+		//			for (long w = v+1; w < g.n; w++) //w=0
+		//			{
+		//				if (all_dist[u][w] == 2 && all_dist[v][w] == 1)
+		//				{
+		//					for (long x = w+1; x < g.n; x++) //x=0 
+		//					{
+		//						if (all_dist[u][x] == 3 && all_dist[v][x] == 2 && all_dist[w][x] == 1 && x > u)
+		//						{
+		//							model.addConstr(X[hash_edges[u*g.n + x]] + Y[u] + Y[v] + Y[w] + Y[x] >= 1);
+		//						}
+		//					}
+		//				}
+		//			}
+		//		}
+		//	}
+		//}
 
 
 		cerr << "Adding budget constraints" << endl;
