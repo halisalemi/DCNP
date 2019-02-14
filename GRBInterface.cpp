@@ -21,12 +21,13 @@ string itos(int i) { stringstream s; s << i; return s.str(); }
 
 long integer_separation::numCallbacks = 0;
 double integer_separation::TotalCallbackTime = 0;
-long integer_separation::numLazyCuts = 0;
+long integer_separation::numLazyCutsInteger = 0;
 
 
 long fractional_separation::numCallbacks = 0;
 double fractional_separation::TotalCallbackTime = 0;
-long fractional_separation::numLazyCuts = 0;
+long fractional_separation::numLazyCutsInteger = 0;
+long fractional_separation::numLazyCutsFractional = 0;
 
 
 
@@ -54,7 +55,6 @@ void integer_separation::callback()
 			}
 
 			//get the solution vector (for x variables) from Gurobi
-			//g1 is duplicate of power graph
 			double *x = new double[g1.m];
 			x = getSolution(vars1, g1.m);
 
@@ -63,6 +63,7 @@ void integer_separation::callback()
 			vector<long> distance_from_i;
 			for (long i = 0; i < g2.n; i++)
 			{
+				//long cut_counter = 0;
 				distance_from_i = g2.ShortestPathsUnweighted(i, NonDeletedVertices, predecessor);
 				for (long counter = 0; counter < g1.degree[i]; counter++)
 				{
@@ -80,9 +81,12 @@ void integer_separation::callback()
 							ss--;
 						}
 						addLazy(expr >= 1);
-						counter++;
-						numLazyCuts++;
-						if (counter == 10 * b1) break; //with this we can change number of cuts. 
+						numLazyCutsInteger++;
+						//cut_counter++;
+						/*in Alg2 as soon as you find a possible cut for one neighbor of i in (G-D)^k, you go.
+						to another i. If you want Alg2 use the following break!*/
+						//break;  
+						//if (cut_counter == 10) break; //with this we can change number of cuts.  
 					}
 					predecessor.clear();
 				}
@@ -105,12 +109,13 @@ void fractional_separation::callback()
 	{
 		if (where == GRB_CB_MIPSOL)
 		{
-
+			//cerr << "Found a new MIP incumbent" << endl;
 			numCallbacks++;
 			time_t start = clock();
 
 			//get the solution vector (for y variables) from Gurobi 
 			//g1 is duplicate of power graph
+			//g2 is duplicate of original graph 
 			double *y = new double[g1.n];
 			y = getSolution(vars, g1.n);
 
@@ -124,15 +129,16 @@ void fractional_separation::callback()
 			}
 
 			//get the solution vector (for x variables) from Gurobi
-			//g1 is duplicate of power graph
 			double *x = new double[g1.m];
 			x = getSolution(vars1, g1.m);
+
 
 			//find a violated length-k i,j-connector inequality (if any exist)
 			vector<long> predecessor;
 			vector<long> distance_from_i;
 			for (long i = 0; i < g2.n; i++)
 			{
+				//long cut_counter = 0;
 				distance_from_i = g2.ShortestPathsUnweighted(i, NonDeletedVertices, predecessor);
 				for (long counter = 0; counter < g1.degree[i]; counter++)
 				{
@@ -150,9 +156,13 @@ void fractional_separation::callback()
 							ss--;
 						}
 						addLazy(expr >= 1);
-						counter++;
-						numLazyCuts++;
-						if (counter == 10 * b1) break; //with this we can change number of cuts. 
+						numLazyCutsInteger++;
+						//cut_counter++;
+						//cerr << "# cuts are " << cut_counter << endl;
+						/*in Alg2 as soon as you find a possible cut for one neighbor of i in (G-D)^k, you go.
+						to another i. If you want Alg2 use the following break.*/
+						//break;
+						//if (cut_counter == 5) break; //with this we can change number of cuts. 
 					}
 					predecessor.clear();
 				}
@@ -161,7 +171,7 @@ void fractional_separation::callback()
 
 		else if (where == GRB_CB_MIPNODE && getIntInfo(GRB_CB_MIPNODE_STATUS) == GRB_OPTIMAL)
 		{
-			//cerr << "In MIPNODE" << endl;
+			//cerr << "Currently exploring a MIP node" << endl;
 			numCallbacks++;
 			time_t start = clock();
 
@@ -207,35 +217,63 @@ void fractional_separation::callback()
 					}
 				}
 
-				double min = 1;
-				long t = -1;
+				//Alg 3 prime!
 				for (long counter3 = 0; counter3 < g1.degree[i]; counter3++)
 				{
 					long j = g1.adj[i][counter3];
-					if (j > i) //because of hashing 
+					if (j > i) //because of hashing
 					{
-						if (x[hashing[i*g2.n + j]] + d[j][k1] < min)
+						if (1 - x[hashing[i*g2.n + j]] - d[j][k1] > 0.05)
 						{
-							min = x[hashing[i*g2.n + j]] + d[j][k1];
-							t = j;
+							GRBLinExpr expr = vars1[hashing[i*g2.n + j]] + vars[j] + vars[i];
+							long q = p[j][k1];
+							long ss = k1 - 1;
+							for (long counter = 2; counter <= k1; counter++)
+							{
+								expr += vars[q];
+								q = p[q][ss];
+								ss--;
+							}
+							addCut(expr >= 1);
+							numLazyCutsFractional++;
 						}
 					}
 				}
-				if (min < 0.9)
-				{
-					//cerr << "min is " << min << endl;
-					GRBLinExpr expr = vars1[hashing[i*g2.n + t]] + vars[t] + vars[i];
-					long q = p[t][k1];
-					long ss = k1 - 1;
-					for (long counter = 2; counter <= k1; counter++)
-					{
-						expr += vars[q];
-						q = p[q][ss];
-						ss--;
-					}
-					addCut(expr >= 1);
-					//cerr << "." << endl;
-				}
+				//End of Alg 3 prime!
+
+
+				//Alg 3! 
+				//double min = 1;
+				//long t = -1;
+				//for (long counter3 = 0; counter3 < g1.degree[i]; counter3++)
+				//{
+				//	long j = g1.adj[i][counter3];
+				//	if (j > i) //because of hashing 
+				//	{
+				//		if (x[hashing[i*g2.n + j]] + d[j][k1] < min)
+				//		{
+				//			min = x[hashing[i*g2.n + j]] + d[j][k1];
+				//			t = j;
+				//		}
+				//	}
+				//}
+				//if (min < 0.9)
+				//{
+				//	//cerr << "min is " << min << endl;
+				//	GRBLinExpr expr = vars1[hashing[i*g2.n + t]] + vars[t] + vars[i];
+				//	long q = p[t][k1];
+				//	long ss = k1 - 1;
+				//	for (long counter = 2; counter <= k1; counter++)
+				//	{
+				//		expr += vars[q];
+				//		q = p[q][ss];
+				//		ss--;
+				//	}
+				//	addCut(expr >= 1);
+				//  numLazyCutsFractional++;
+				//	//cerr << "." << endl;
+				//}
+				//End of Alg 3!
 			}
 		}
 	}
@@ -265,9 +303,10 @@ vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> 
 	try
 	{
 		GRBEnv env = GRBEnv();
-		//env.set(GRB_IntParam_OutputFlag, 0);
+		env.set(GRB_IntParam_OutputFlag, 0);
 		//env.set(GRB_IntParam_Method, 3); //use barrier method to solve LP relaxation.
-		env.set(GRB_DoubleParam_TimeLimit, 14400);
+		env.set(GRB_IntParam_ConcurrentMIP,1);
+		env.set(GRB_DoubleParam_TimeLimit, 3600);
 		GRBModel model = GRBModel(env);
 		model.getEnv().set(GRB_DoubleParam_MIPGap, 0.0);
 		model.getEnv().set(GRB_IntParam_LazyConstraints, 1);
@@ -337,7 +376,7 @@ vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> 
 					if (neighbors[j] == false && j>i)
 					{
 						model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[j] + Y[u] >= 1);
-						//length_2_connecotrs++;
+						length_2_connecotrs++;
 					}
 				}
 			}
@@ -345,14 +384,14 @@ vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> 
 		cerr << "Number of minimal length-2 connecter inequalities is " << length_2_connecotrs << endl;
 
 
-		vector < vector<long>> all_dist;
-		for (long i = 0; i < g.n; i++)
-		{
-			vector<long> dist_from_i_to = g.ShortestPathsUnweighted(i);
-			all_dist.push_back(dist_from_i_to);
-		}
+		//vector < vector<long>> all_dist;
+		//for (long i = 0; i < g.n; i++)
+		//{
+		//	vector<long> dist_from_i_to = g.ShortestPathsUnweighted(i);
+		//	all_dist.push_back(dist_from_i_to);
+		//}
 
-		//cerr << "Adding constraints for length-3 connectors" << endl; //what discussed in meeting, all the connectors
+		//cerr << "Adding constraints for length-3 connectors" << endl; //all the connectors
 		//long length_3_connecotrs = 0;
 		//for (long i = 0; i < g.n; i++)
 		//{
@@ -382,30 +421,6 @@ vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> 
 		//}
 		//cerr << "Number of minimal length-3 connecter inequalities is " << length_3_connecotrs << endl;
 
-
-		cerr << "Adding some of the length-3 i,j-connectors" << endl;
-		for (long u = 0; u < g.n; u++)
-		{
-			for (long v = u + 1; v < g.n; v++)
-			{
-				if (all_dist[u][v] == 1)
-				{
-					for (long w = v + 1; w < g.n; w++)
-					{
-						if (all_dist[u][w] == 2 && all_dist[v][w] == 1)
-						{
-							for (long x = w + 1; x < g.n; x++)
-							{
-								if (all_dist[u][x] == 3 && all_dist[v][x] == 2 && all_dist[w][x] == 1 && x > u)
-								{
-									model.addConstr(X[hash_edges[u*g.n + x]] + Y[u] + Y[v] + Y[w] + Y[x] >= 1);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
 
 		cerr << "Adding budget constraints" << endl;
 		GRBLinExpr expr1 = 0;
@@ -475,7 +490,7 @@ vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> 
 		long NumOfBandBNodes = (long)model.get(GRB_DoubleAttr_NodeCount);
 		cerr << "# B&B Nodes : " << NumOfBandBNodes << endl;
 		cerr << "Number of callbacks is: " << integer_separation::numCallbacks << endl;
-		cerr << "Number of Lazy Cuts is: " << integer_separation::numLazyCuts << endl;
+		cerr << "Number of Lazy Cuts is: " << integer_separation::numLazyCutsInteger << endl;
 		cerr << "Time spent in callback is: " << integer_separation::TotalCallbackTime << endl;
 
 	}
@@ -504,9 +519,10 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 	try
 	{
 		GRBEnv env = GRBEnv();
-		//env.set(GRB_IntParam_OutputFlag, 0);
-		env.set(GRB_IntParam_Method, 3); //use barrier method to solve LP relaxation.
-		env.set(GRB_DoubleParam_TimeLimit, 10800);
+		env.set(GRB_IntParam_OutputFlag, 0);
+		//env.set(GRB_IntParam_Method, 3); //use barrier method to solve LP relaxation.
+		env.set(GRB_IntParam_ConcurrentMIP, 1);
+		env.set(GRB_DoubleParam_TimeLimit, 3600);
 		GRBModel model = GRBModel(env);
 		model.getEnv().set(GRB_DoubleParam_MIPGap, 0.0);
 		model.getEnv().set(GRB_IntParam_LazyConstraints, 1);
@@ -546,6 +562,7 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 			model.addConstr(Y[solution[i]] == 0);
 		}
 
+
 		cerr << "Adding constraints for edges." << endl;
 		for (long u = 0; u < g.n; u++)
 		{
@@ -558,7 +575,7 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 
 
 		long length_2_connecotrs = 0;
-		cerr << "Adding constraints for length-2 connectors" << endl;
+		cerr << "Adding constraints for length-2 i,j-connectors where dist(i,j)=2." << endl;
 		for (long u = 0; u < g.n; u++)
 		{
 			for (long counter1 = 0; counter1 < g.degree[u]; counter1++)
@@ -580,37 +597,8 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 				}
 			}
 		}
-		////cerr << "Number of minimal length-2 connecter inequalities is " << length_2_connecotrs << endl;
+		cerr << "Number of minimal length-2 connecter inequalities is " << length_2_connecotrs << endl;
 
-		//cerr << "Adding some of the length-3 i,j-connectors" << endl;
-		//vector < vector<long>> all_dist;
-		//for (long i = 0; i < g.n; i++)
-		//{
-		//	vector<long> dist_from_i_to = g.ShortestPathsUnweighted(i);
-		//	all_dist.push_back(dist_from_i_to);
-		//}
-		//for (long u = 0; u < g.n; u++)
-		//{
-		//	for (long v = u+1; v < g.n; v++) //v=0
-		//	{
-		//		if (all_dist[u][v] == 1)
-		//		{
-		//			for (long w = v+1; w < g.n; w++) //w=0
-		//			{
-		//				if (all_dist[u][w] == 2 && all_dist[v][w] == 1)
-		//				{
-		//					for (long x = w+1; x < g.n; x++) //x=0 
-		//					{
-		//						if (all_dist[u][x] == 3 && all_dist[v][x] == 2 && all_dist[w][x] == 1 && x > u)
-		//						{
-		//							model.addConstr(X[hash_edges[u*g.n + x]] + Y[u] + Y[v] + Y[w] + Y[x] >= 1);
-		//						}
-		//					}
-		//				}
-		//			}
-		//		}
-		//	}
-		//}
 
 
 		cerr << "Adding budget constraints" << endl;
@@ -621,6 +609,8 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 		}
 		model.addConstr(expr1 <= b);
 		model.update();
+
+
 
 		cerr << "Adding Lazy Constraints." << endl;
 		fractional_separation cb = fractional_separation(X, hash_edges, Y, gs, g, k, b);
@@ -681,7 +671,8 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 		long NumOfBandBNodes = (long)model.get(GRB_DoubleAttr_NodeCount);
 		cerr << "# B&B Nodes : " << NumOfBandBNodes << endl;
 		cerr << "Number of callbacks is: " << fractional_separation::numCallbacks << endl;
-		cerr << "Number of Lazy Cuts is: " << fractional_separation::numLazyCuts << endl;
+		cerr << "Number of Lazy Cuts in integer separation part is: " << fractional_separation::numLazyCutsInteger << endl;
+		cerr << "Number of Lazy Cuts in fractional separation part is: " << fractional_separation::numLazyCutsFractional << endl;
 		cerr << "Time spent in callback is: " << fractional_separation::TotalCallbackTime << endl;
 
 	}
