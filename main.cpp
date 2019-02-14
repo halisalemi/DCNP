@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
 		
 		time_t Heuristic_start = clock();
 		vector<long> Heuristic_sol = Greedy_Heuristic(g, k, b);
-		
+
 
 		cerr << "Time that spent in Heuristic in sec is: " << (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC << endl;
 		double Heuristic_time = (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC;
