@@ -9,6 +9,7 @@
 #include <limits>
 #include <stack>
 #include "ConnectorEnumeration.h"
+#include "Binary_Heap.h"
 #include <unordered_map>
 
 
@@ -17,6 +18,11 @@ using namespace std;
 
 
 string itos(int i) { stringstream s; s << i; return s.str(); }
+
+
+long integer_separation_weighted::numCallbacks = 0;
+double integer_separation_weighted::TotalCallbackTime = 0;
+long integer_separation_weighted::numLazyCutsInteger = 0;
 
 
 long integer_separation::numCallbacks = 0;
@@ -28,6 +34,78 @@ long fractional_separation::numCallbacks = 0;
 double fractional_separation::TotalCallbackTime = 0;
 long fractional_separation::numLazyCutsInteger = 0;
 long fractional_separation::numLazyCutsFractional = 0;
+
+
+void integer_separation_weighted::callback()
+{
+	try
+	{
+		if (where == GRB_CB_MIPSOL)
+		{
+			numCallbacks++;
+			time_t start = clock();
+
+			//get the solution vector (for y variables) from Gurobi 
+			//g1 is duplicate of power graph
+			//g2 is duplicate of original graph
+			double *y = new double[g1.n];
+			y = getSolution(vars, g1.n);
+
+			//now, make it and its complement boolean
+			vector<bool> DeletedVertices(g2.n, false);
+			vector<bool> NonDeletedVertices(g2.n, false);
+			for (long i = 0; i < g1.n; i++)
+			{
+				if (y[i] > 0.5) DeletedVertices[i] = true;
+				else NonDeletedVertices[i] = true;
+			}
+
+			//get the solution vector (for x variables) from Gurobi
+			//g1 is duplicate of power graph
+			double *x = new double[g1.m];
+			x = getSolution(vars1, g1.m);
+
+			//find a violated length-k i,j-connector inequality (if any exist)
+			//vector<long> distance_from_i;
+			vector<long> predecessor;
+			vector<long> distance_from_i;
+			for (long i = 0; i < g2.n; i++)
+			{
+				distance_from_i = g2.ShortestPathsWeighted(i, NonDeletedVertices, predecessor);
+				for (long counter = 0; counter < g1.degree[i]; counter++)
+				{
+					long j = g1.adj[i][counter];
+					if (j > i && distance_from_i[j] <= k1 && x[hashing[i*g2.n + j]] == 0)
+					{
+						GRBLinExpr expr = vars1[hashing[i*g2.n + j]] + vars[i] + vars[j];
+
+						long q = predecessor[j];
+						long ss = k1 - 1;
+						for (long counter = 2; counter <= k1; counter++)
+						{
+							expr += vars[q];
+							q = predecessor[q];
+							ss--;
+						}
+						addLazy(expr >= 1);
+						numLazyCutsInteger++;
+					}
+					predecessor.clear();
+				}
+			}
+			
+
+		
+		}
+	}
+	catch (GRBException e) {
+		cout << "Error number: " << e.getErrorCode() << endl;
+		cout << e.getMessage() << endl;
+	}
+	catch (...) {
+		cout << "Error during callback" << endl;
+	}
+}
 
 
 
@@ -55,6 +133,7 @@ void integer_separation::callback()
 			}
 
 			//get the solution vector (for x variables) from Gurobi
+			//g1 is duplicate of power graph
 			double *x = new double[g1.m];
 			x = getSolution(vars1, g1.m);
 
@@ -86,7 +165,7 @@ void integer_separation::callback()
 						/*in Alg2 as soon as you find a possible cut for one neighbor of i in (G-D)^k, you go.
 						to another i. If you want Alg2 use the following break!*/
 						//break;  
-						//if (cut_counter == 10) break; //with this we can change number of cuts.  
+						//if (cut_counter == 10 * b1) break; //with this we can change number of cuts.  
 					}
 					predecessor.clear();
 				}
@@ -115,7 +194,6 @@ void fractional_separation::callback()
 
 			//get the solution vector (for y variables) from Gurobi 
 			//g1 is duplicate of power graph
-			//g2 is duplicate of original graph 
 			double *y = new double[g1.n];
 			y = getSolution(vars, g1.n);
 
@@ -129,6 +207,7 @@ void fractional_separation::callback()
 			}
 
 			//get the solution vector (for x variables) from Gurobi
+			//g1 is duplicate of power graph
 			double *x = new double[g1.m];
 			x = getSolution(vars1, g1.m);
 
@@ -223,7 +302,7 @@ void fractional_separation::callback()
 					long j = g1.adj[i][counter3];
 					if (j > i) //because of hashing
 					{
-						if (1 - x[hashing[i*g2.n + j]] - d[j][k1] > 0.05)
+						if (1 - x[hashing[i*g2.n + j]] - d[j][k1] > 0.01)
 						{
 							GRBLinExpr expr = vars1[hashing[i*g2.n + j]] + vars[j] + vars[i];
 							long q = p[j][k1];
@@ -241,8 +320,6 @@ void fractional_separation::callback()
 				}
 				//End of Alg 3 prime!
 
-
-				//Alg 3! 
 				//double min = 1;
 				//long t = -1;
 				//for (long counter3 = 0; counter3 < g1.degree[i]; counter3++)
@@ -273,7 +350,6 @@ void fractional_separation::callback()
 				//  numLazyCutsFractional++;
 				//	//cerr << "." << endl;
 				//}
-				//End of Alg 3!
 			}
 		}
 	}
@@ -305,7 +381,7 @@ vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> 
 		GRBEnv env = GRBEnv();
 		env.set(GRB_IntParam_OutputFlag, 0);
 		//env.set(GRB_IntParam_Method, 3); //use barrier method to solve LP relaxation.
-		env.set(GRB_IntParam_ConcurrentMIP,1);
+		env.set(GRB_IntParam_ConcurrentMIP, 1);
 		env.set(GRB_DoubleParam_TimeLimit, 3600);
 		GRBModel model = GRBModel(env);
 		model.getEnv().set(GRB_DoubleParam_MIPGap, 0.0);
@@ -384,43 +460,67 @@ vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> 
 		cerr << "Number of minimal length-2 connecter inequalities is " << length_2_connecotrs << endl;
 
 
-		//vector < vector<long>> all_dist;
-		//for (long i = 0; i < g.n; i++)
-		//{
-		//	vector<long> dist_from_i_to = g.ShortestPathsUnweighted(i);
-		//	all_dist.push_back(dist_from_i_to);
-		//}
+		vector < vector<long>> all_dist;
+		for (long i = 0; i < g.n; i++)
+		{
+			vector<long> dist_from_i_to = g.ShortestPathsUnweighted(i);
+			all_dist.push_back(dist_from_i_to);
+		}
 
-		//cerr << "Adding constraints for length-3 connectors" << endl; //all the connectors
-		//long length_3_connecotrs = 0;
-		//for (long i = 0; i < g.n; i++)
-		//{
-		//	for (long u = 0; u < g.n; u++) //u=i+1
-		//	{
-		//		if (all_dist[i][u] == 1)
-		//		{
-		//			for (long v = 0; v < g.n; v++) //v=u+1
-		//			{
-		//				if (all_dist[u][v] == 1)
-		//				{
-		//					for (long j = 0; j < g.n; j++) //j=v+1
-		//					{
-		//						if (all_dist[v][j] == 1)
-		//						{
-		//							if (all_dist[i][v] == 2 && all_dist[u][j] == 2 &&j>i)
-		//							{
-		//								model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[u] + Y[v] + Y[j] >= 1);
-		//								length_3_connecotrs++;
-		//							}
-		//						}
-		//					}
-		//				}
-		//			}
-		//		}
-		//	}
-		//}
-		//cerr << "Number of minimal length-3 connecter inequalities is " << length_3_connecotrs << endl;
+		cerr << "Adding constraints for length-3 connectors" << endl; //all the connectors
+		long length_3_connecotrs = 0;
+		for (long i = 0; i < g.n; i++)
+		{
+			for (long u = 0; u < g.n; u++) //u=i+1
+			{
+				if (all_dist[i][u] == 1)
+				{
+					for (long v = 0; v < g.n; v++) //v=u+1
+					{
+						if (all_dist[u][v] == 1)
+						{
+							for (long j = 0; j < g.n; j++) //j=v+1
+							{
+								if (all_dist[v][j] == 1)
+								{
+									if (all_dist[i][v] == 2 && all_dist[u][j] == 2 &&j>i)
+									{
+										model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[u] + Y[v] + Y[j] >= 1);
+										length_3_connecotrs++;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		cerr << "Number of minimal length-3 connecter inequalities is " << length_3_connecotrs << endl;
 
+
+		/*cerr << "Adding some of the length-3 i,j-connectors" << endl;
+		for (long u = 0; u < g.n; u++)
+		{
+		for (long v = u + 1; v < g.n; v++)
+		{
+		if (all_dist[u][v] == 1)
+		{
+		for (long w = v + 1; w < g.n; w++)
+		{
+		if (all_dist[u][w] == 2 && all_dist[v][w] == 1)
+		{
+		for (long x = w + 1; x < g.n; x++)
+		{
+		if (all_dist[u][x] == 3 && all_dist[v][x] == 2 && all_dist[w][x] == 1 && x > u)
+		{
+		model.addConstr(X[hash_edges[u*g.n + x]] + Y[u] + Y[v] + Y[w] + Y[x] >= 1);
+		}
+		}
+		}
+		}
+		}
+		}
+		}*/
 
 		cerr << "Adding budget constraints" << endl;
 		GRBLinExpr expr1 = 0;
@@ -461,7 +561,7 @@ vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> 
 					X[hash_edges[i*g.n + j]].set(GRB_DoubleAttr_Start, 1);
 				}
 			}
-		}	
+		}
 
 		cerr << "Optimizing." << endl;
 		model.optimize();
@@ -505,6 +605,143 @@ vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> 
 }
 
 
+vector<long> solveDCNP_thin_formulation_weighted(KGraph &g, long k, long b, vector<long> Heuristic_sol, bool &subOpt)
+{
+	vector<long> Deleted;
+	subOpt = true;
+
+	cerr << "creating power graph " << endl;
+	KGraph gs = g.CreatePowerGraphWeighted(k);
+	cerr << "|E^k| is " << gs.m << endl;
+
+	try
+	{
+		GRBEnv env = GRBEnv();
+		env.set(GRB_IntParam_OutputFlag, 0);
+		//env.set(GRB_IntParam_Method, 3); //use barrier method to solve LP relaxation.
+		env.set(GRB_IntParam_ConcurrentMIP, 1);
+		env.set(GRB_DoubleParam_TimeLimit, 3600);
+		GRBModel model = GRBModel(env);
+		model.getEnv().set(GRB_DoubleParam_MIPGap, 0.0);
+		model.getEnv().set(GRB_IntParam_LazyConstraints, 1);
+
+
+		GRBVar *Y = model.addVars(g.n, GRB_BINARY);
+		GRBVar *X = model.addVars(gs.m, GRB_BINARY);
+		model.update();
+
+		cerr << "Adding objective function." << endl;
+		GRBLinExpr Objective = 0;
+		for (long i = 0; i < gs.m; i++)
+		{
+			Objective += X[i];
+		}
+		Objective *= 2;
+		model.setObjective(Objective, GRB_MINIMIZE);
+		model.update();
+
+
+		cerr << "Hashing edges" << endl;
+		unordered_map<long, long> hash_edges;
+		long cur = 0;
+		for (long u = 0; u < gs.n; u++)
+		{
+			for (long i = 0; i < gs.adj[u].size(); i++)
+			{
+				long v = gs.adj[u][i];
+				if (v > u) hash_edges.insert(make_pair(u*gs.n + v, cur++));
+			}
+		}
+
+		cerr << "Fixing variables" << endl;
+		vector<long> solution = Preprocessing(g);
+		for (long i = 0; i < solution.size(); i++)
+		{
+			model.addConstr(Y[solution[i]] == 0);
+		}
+
+		vector < vector<long>> all_dist;
+		for (long i = 0; i < g.n; i++)
+		{
+			vector<long> dist_from_i_to = g.ShortestPathsWeighted(i);
+			all_dist.push_back(dist_from_i_to);
+		}
+
+
+		cerr << "Adding constraint when hop distance=1" << endl;
+		for (long i = 0; i < g.n; i++)
+		{
+			for (long counter = 0; counter < g.degree[i]; counter++)
+			{
+				long j = g.adj[i][counter];
+				if (all_dist[i][j] <= k && i<j)
+				{
+					model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[j] >= 1);
+				}
+			}
+		}
+
+		cerr << "Adding budget constraints" << endl;
+		GRBLinExpr expr1 = 0;
+		for (long i = 0; i < g.n; i++)
+		{
+			expr1 += Y[i];
+		}
+		model.addConstr(expr1 <= b);
+		model.update();
+
+
+		cerr << "Adding Lazy Constraints." << endl;
+		integer_separation_weighted cb = integer_separation_weighted(X, hash_edges, Y, gs, g, k, b);
+		model.setCallback(&cb);
+
+
+		cerr << "Optimizing." << endl;
+		model.optimize();
+
+		long bestUB = model.get(GRB_DoubleAttr_ObjVal);
+		long bestLB = model.get(GRB_DoubleAttr_ObjBound);
+		cout << bestLB << " " << bestUB << " ";
+
+
+		int status = model.get(GRB_IntAttr_Status);
+		if (status == GRB_OPTIMAL)
+			subOpt = false;
+		else return Deleted;
+
+
+		for (long i = 0; i < g.n; i++)
+			if (Y[i].get(GRB_DoubleAttr_X) > 0.5)
+				Deleted.push_back(i);
+
+		delete[] Y;
+		delete[] X;
+
+
+		long NumOfBandBNodes = (long)model.get(GRB_DoubleAttr_NodeCount);
+		cerr << "# B&B Nodes : " << NumOfBandBNodes << endl;
+		cerr << "Number of callbacks is: " << integer_separation_weighted::numCallbacks << endl;
+		cerr << "Number of Lazy Cuts is: " << integer_separation_weighted::numLazyCutsInteger << endl;
+		cerr << "Time spent in callback is: " << integer_separation_weighted::TotalCallbackTime << endl;
+
+
+
+
+	}
+
+
+	catch (GRBException e) {
+		cout << "Error code = " << e.getErrorCode() << endl;
+		cout << e.getMessage() << endl;
+	}
+	catch (...) {
+		cout << "Error during optimization" << endl;
+	}
+
+	return Deleted;
+}
+
+
 
 /*The following function uses O(|E^k|) variables. We use hashing for power graph edges. Fractional separation is performed.*/
 vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, vector<long> Heuristic_sol, bool &subOpt)
@@ -514,15 +751,15 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 
 	cerr << "creating power graph " << endl;
 	KGraph gs = g.CreatePowerGraph(k);
-	//cerr << "|E^k| is " << gs.m << endl;
+	cerr << "|E^k| is " << gs.m << endl;
 
 	try
 	{
 		GRBEnv env = GRBEnv();
-		env.set(GRB_IntParam_OutputFlag, 0);
-		//env.set(GRB_IntParam_Method, 3); //use barrier method to solve LP relaxation.
+		//env.set(GRB_IntParam_OutputFlag, 0);
+		env.set(GRB_IntParam_Method, 3); //use barrier method to solve LP relaxation.
 		env.set(GRB_IntParam_ConcurrentMIP, 1);
-		env.set(GRB_DoubleParam_TimeLimit, 3600);
+		env.set(GRB_DoubleParam_TimeLimit, 43200);
 		GRBModel model = GRBModel(env);
 		model.getEnv().set(GRB_DoubleParam_MIPGap, 0.0);
 		model.getEnv().set(GRB_IntParam_LazyConstraints, 1);
@@ -599,6 +836,35 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 		}
 		cerr << "Number of minimal length-2 connecter inequalities is " << length_2_connecotrs << endl;
 
+		/*cerr << "Adding some of the length-3 i,j-connectors" << endl;
+		vector < vector<long>> all_dist;
+		for (long i = 0; i < g.n; i++)
+		{
+			vector<long> dist_from_i_to = g.ShortestPathsUnweighted(i);
+			all_dist.push_back(dist_from_i_to);
+		}
+		for (long u = 0; u < g.n; u++)
+		{
+			for (long v = 0; v < g.n; v++)
+			{
+				if (all_dist[u][v] == 1)
+				{
+					for (long w = 0; w < g.n; w++)
+					{
+						if (all_dist[u][w] == 2 && all_dist[v][w] == 1)
+						{
+							for (long x = 0; x < g.n; x++)
+							{
+								if (all_dist[u][x] == 3 && all_dist[v][x] == 2 && all_dist[w][x] == 1 && x > u)
+								{
+									model.addConstr(X[hash_edges[u*g.n + x]] + Y[u] + Y[v] + Y[w] + Y[x] >= 1);
+								}
+							}
+						}
+					}
+				}
+			}
+		}*/
 
 
 		cerr << "Adding budget constraints" << endl;
@@ -650,6 +916,12 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 		cerr << "Optimizing." << endl;
 		model.optimize();
 
+		//|E^k|
+		cout << gs.m << " ";
+
+		//# integer cuts and # fractional cuts in the callback function
+		cout << fractional_separation::numLazyCutsInteger << " " << fractional_separation::numLazyCutsFractional << " ";
+
 		long bestUB = model.get(GRB_DoubleAttr_ObjVal);
 		long bestLB = model.get(GRB_DoubleAttr_ObjBound);
 		cout << bestLB << " " << bestUB << " ";
@@ -674,6 +946,7 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 		cerr << "Number of Lazy Cuts in integer separation part is: " << fractional_separation::numLazyCutsInteger << endl;
 		cerr << "Number of Lazy Cuts in fractional separation part is: " << fractional_separation::numLazyCutsFractional << endl;
 		cerr << "Time spent in callback is: " << fractional_separation::TotalCallbackTime << endl;
+
 
 	}
 
@@ -703,6 +976,7 @@ vector<long> solveDCNP_path_like(KGraph &g, long k, long b, vector<long> Heurist
 		GRBEnv env = GRBEnv();
 		env.set(GRB_IntParam_OutputFlag, 0);
 		env.set(GRB_IntParam_Method, 3); //use barrier method to solve LP relaxation.
+		//env.set(GRB_IntParam_ConcurrentMIP, 1);
 		env.set(GRB_DoubleParam_TimeLimit, 3600);
 		GRBModel model = GRBModel(env);
 		model.getEnv().set(GRB_DoubleParam_MIPGap, 0.0);
@@ -924,7 +1198,8 @@ vector<long> solveDCNP_Veremyev(KGraph &g, long k, long b, vector<long> Heuristi
 	{
 		GRBEnv env = GRBEnv();
 		//env.set(GRB_IntParam_OutputFlag, 0);
-		env.set(GRB_IntParam_Method, 3);  //use barrier method to solve LP relaxation.
+		//env.set(GRB_IntParam_Method, 3);  //use barrier method to solve LP relaxation.
+		env.set(GRB_IntParam_ConcurrentMIP, 1);
 		env.set(GRB_DoubleParam_TimeLimit, 3600);
 		GRBModel model = GRBModel(env);
 		model.getEnv().set(GRB_DoubleParam_MIPGap, 0.0);
@@ -985,6 +1260,21 @@ vector<long> solveDCNP_Veremyev(KGraph &g, long k, long b, vector<long> Heuristi
 						model.addConstr(U[i][j][s] == 0);
 					}
 				}
+			}
+		}
+		vector<long> solution = Preprocessing(g);
+		for (long i = 0; i < solution.size(); i++)
+		{
+			model.addConstr(Y[solution[i]] == 0);
+		}
+
+		for (long i = 0; i < g.n; i++)
+		{
+			for (long j = i + 1; j < g.n; j++)
+			{
+				model.addConstr(U[i][j][0] <= U[i][j][1]);
+				model.addConstr(U[i][j][0] <= U[i][j][2]);
+				model.addConstr(U[i][j][1] <= U[i][j][2]);
 			}
 		}
 
@@ -1286,9 +1576,9 @@ vector<long> Greedy_Heuristic(KGraph &g, long k, long b)
 {
 
 	long N = 1; //number of total iterations of algorithm
-	vector<long> D = BC(g, b);  
+	vector<long> D = BC(g, b);
 	vector<long> D_Star;
-	float q_star = INFINITY;  
+	float q_star = INFINITY;
 	vector<long> D_copy = D; //D_copy is just a copy of D
 	long delta_b = b / 2;
 	long obj = 0;
@@ -1303,7 +1593,6 @@ vector<long> Greedy_Heuristic(KGraph &g, long k, long b)
 				q_star = obj;
 				N++;
 			}
-
 			vector<long> close_vertices;
 			vector<bool> current_nondeleted_vertices(g.n, true);
 
@@ -1395,3 +1684,4 @@ vector<long> Greedy_Heuristic(KGraph &g, long k, long b)
 
 	return D_Star;
 }
+
