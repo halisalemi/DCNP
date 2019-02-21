@@ -7,6 +7,7 @@
 #include <map>
 #include <omp.h>
 #include "Clique.h"
+#include "Binary_Heap.h"
 using namespace std;
 
 
@@ -217,6 +218,276 @@ vector<long> KGraph::ShortestPathsUnweighted(long origin, vector<bool> &S, vecto
 	return dist;
 }
 
+vector<long> KGraph::ShortestPathsWeighted(long origin)
+{
+	vector<long> dist(n);
+	vector<long> pre(n);
+	vector<bool> visited(n, false);
+
+	//h is our heap
+	struct BinaryHeap* h = createMinHeap(n);
+
+	//Initialize heap h with all vertices.
+	for (long v = 0; v < n; v++)
+	{
+		dist[v] = INT_MAX;
+		h->array[v] = newMinHeapNode(v, dist[v]);
+		h->pos[v] = v;
+	}
+
+	// Make dist value of origin vertex as 0 so that it is extracted first
+	h->array[origin] = newMinHeapNode(origin, dist[origin]);
+	h->pos[origin] = origin;
+	dist[origin] = 0;
+	decreaseKey(h, origin, dist[origin]);
+	pre[origin] = origin;
+
+	// Initially size of min heap is equal to n
+	h->size = n;
+
+	/*In the following loop, min heap contains all nodes
+	/whose shortest distance is not yet finalized.*/
+	for (long counter = 0; counter < n; counter++)
+	{
+		//Extract the vertex with minimum distance value
+		struct BinaryHeapNode* minHeapNode = extractMin(h);
+		long u = minHeapNode->v; // Store the extracted vertex number
+
+		//cerr << "u = " << u << endl;
+		visited[u] = true;
+
+		/*Traverse through all adjacent vertices of u (the extracted
+		vertex) and update their distance values*/
+		for (long i = 0; i < degree[u]; i++)
+		{
+			long v = adj[u][i];
+			//cerr << "v = " << v << endl;
+
+			if (!visited[v] && dist[u] + weight[u][i] < dist[v])
+			{
+				dist[v] = dist[u] + weight[u][i];
+				pre[v] = u;
+				decreaseKey(h, v, dist[v]);
+			}
+		}
+	}
+	return dist;
+}
+
+vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S)
+{
+	vector<long> dist(n,INT_MAX);
+	vector<long> pre(n);
+	vector<bool> visited(n, false);
+
+	//if origin not in S, return infinities.
+	if (!S[origin]) return dist;  
+
+	//h is our heap
+	struct BinaryHeap* h = createMinHeap(n);
+
+	//Initialize heap h with all vertices.
+	for (long v = 0; v < n; v++)
+	{
+		dist[v] = INT_MAX;
+		h->array[v] = newMinHeapNode(v, dist[v]);
+		h->pos[v] = v;
+	}
+
+	// Make dist value of origin vertex as 0 so that it is extracted first
+	h->array[origin] = newMinHeapNode(origin, dist[origin]);
+	h->pos[origin] = origin;
+	dist[origin] = 0;
+	decreaseKey(h, origin, dist[origin]);
+	pre[origin] = origin;
+
+	// Initially size of min heap is equal to n
+	h->size = n;
+
+	/*In the following loop, min heap contains all nodes
+	/whose shortest distance is not yet finalized.*/
+	for (long counter = 0; counter < n; counter++)
+	{
+		//Extract the vertex with minimum distance value
+		struct BinaryHeapNode* minHeapNode = extractMin(h);
+
+		long u = minHeapNode->v; // Store the extracted vertex number
+
+		if (!S[u]) continue;
+
+		//cerr << "u = " << u << endl;
+		visited[u] = true;
+
+		/*Traverse through all adjacent vertices of u (the extracted
+		vertex) and update their distance values*/
+		for (long i = 0; i < degree[u]; i++)
+		{
+			long v = adj[u][i];
+			//cerr << "v = " << v << endl;
+
+			if (S[v] && !visited[v] && dist[u] + weight[u][i] < dist[v])
+			{
+				dist[v] = dist[u] + weight[u][i];
+				pre[v] = u;
+				decreaseKey(h, v, dist[v]);
+			}
+		}
+	}
+
+	return dist;
+}
+
+vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S, vector<long> &Predecessor)
+{
+	vector<long> dist(n, INT_MAX);
+	vector<long> pre(n);
+	vector<bool> visited(n, false);
+
+	//if origin not in S, return infinities.
+	if (!S[origin]) return dist;
+
+	//h is our heap
+	struct BinaryHeap* h = createMinHeap(n);
+
+	//Initialize heap h with all vertices.
+	for (long v = 0; v < n; v++)
+	{
+		dist[v] = INT_MAX;
+		h->array[v] = newMinHeapNode(v, dist[v]);
+		h->pos[v] = v;
+	}
+
+	// Make dist value of origin vertex as 0 so that it is extracted first
+	h->array[origin] = newMinHeapNode(origin, dist[origin]);
+	h->pos[origin] = origin;
+	dist[origin] = 0;
+	decreaseKey(h, origin, dist[origin]);
+	pre[origin] = origin;
+
+	// Initially size of min heap is equal to n
+	h->size = n;
+
+	/*In the following loop, min heap contains all nodes
+	/whose shortest distance is not yet finalized.*/
+	for (long counter = 0; counter < n; counter++)
+	{
+		//Extract the vertex with minimum distance value
+		struct BinaryHeapNode* minHeapNode = extractMin(h);
+
+		long u = minHeapNode->v; // Store the extracted vertex number
+
+		if (!S[u]) continue;
+
+		//cerr << "u = " << u << endl;
+		visited[u] = true;
+
+		/*Traverse through all adjacent vertices of u (the extracted
+		vertex) and update their distance values*/
+		for (long i = 0; i < degree[u]; i++)
+		{
+			long v = adj[u][i];
+			//cerr << "v = " << v << endl;
+
+			if (S[v] && !visited[v] && dist[u] + weight[u][i] < dist[v])
+			{
+				dist[v] = dist[u] + weight[u][i];
+				pre[v] = u;
+				decreaseKey(h, v, dist[v]);
+			}
+		}
+	}
+
+	Predecessor = pre;
+	return dist;
+}
+
+vector<long> KGraph::BinaryHeapDijkstra(long origin, long sink, vector<bool> &S)
+{
+	vector<long> dist(n, INT_MAX);
+	vector<long> pre(n);
+	vector<bool> visited(n, false);
+
+	//if origin not in S, return infinities.
+	if (!S[origin]) return dist;
+
+	//h is our heap
+	struct BinaryHeap* h = createMinHeap(n);
+
+	//Initialize heap h with all vertices.
+	for (long v = 0; v < n; v++)
+	{
+		dist[v] = INT_MAX;
+		h->array[v] = newMinHeapNode(v, dist[v]);
+		h->pos[v] = v;
+	}
+
+	// Make dist value of origin vertex as 0 so that it is extracted first
+	h->array[origin] = newMinHeapNode(origin, dist[origin]);
+	h->pos[origin] = origin;
+	dist[origin] = 0;
+	decreaseKey(h, origin, dist[origin]);
+	pre[origin] = origin;
+
+	// Initially size of min heap is equal to n
+	h->size = n;
+
+	/*In the following loop, min heap contains all nodes
+	/whose shortest distance is not yet finalized.*/
+	for (long counter = 0; counter < n; counter++)
+	{
+		//Extract the vertex with minimum distance value
+		struct BinaryHeapNode* minHeapNode = extractMin(h);
+
+		long u = minHeapNode->v; // Store the extracted vertex number
+
+		if (!S[u]) continue;
+
+		//cerr << "u = " << u << endl;
+		visited[u] = true;
+
+		/*Traverse through all adjacent vertices of u (the extracted
+		vertex) and update their distance values*/
+		for (long i = 0; i < degree[u]; i++)
+		{
+			long v = adj[u][i];
+			//cerr << "v = " << v << endl;
+
+			if (S[v] && !visited[v] && dist[u] + weight[u][i] < dist[v])
+			{
+				dist[v] = dist[u] + weight[u][i];
+				pre[v] = u;
+				decreaseKey(h, v, dist[v]);
+			}
+		}
+	}
+	vector<long> path;
+	vector<long> empty;
+
+	/*for (long i = 0; i < pre.size(); i++)
+	{
+		cerr << pre[i] << endl;
+	}*/
+
+	
+	/*cerr << "Shortest path from vertex " << origin << " to vertex " << sink << " includes vertices: " << endl;
+	for (long i = 0; i < path.size(); i++)
+	{
+		cerr << path[i] << " ";
+	}*/
+
+	long target = sink;
+	path.push_back(target);
+	while (target != origin)
+	{
+		target = pre[target];
+		path.push_back(target);
+	}
+
+	return path;
+
+
+}
+
 vector<long> KGraph::ShortestPathsUnweighted(long origin)
 {
 	vector<bool> S(n, true);
@@ -350,6 +621,8 @@ KGraph::KGraph(string nm, string file, string type)
 		ReadDIMACSGraph(file);
 	else if (type == "snap_d")
 		ReadSNAPGraph(file);
+	else if (type == "weighted_graph")
+		ReadWeightedGraph(file);
 	else if (type == "dimacs_color")
 		ReadDIMACSColorGraph(file);
 	else if (type == "DAT")
@@ -393,6 +666,26 @@ void KGraph::Duplicate(const KGraph &rhs)
 		degree[i] = rhs.degree[i];
 		adj[i] = rhs.adj[i];
 	}
+}
+
+void KGraph::DuplicateForWeighted(const KGraph &rhs)
+{
+	if (n>0)
+		clear();
+	n = rhs.n;
+	m = rhs.m;
+	name = rhs.name;
+	Delta = rhs.Delta;
+	degree = new long[n];
+	adj = new vector<long>[n];
+	long i = 0;
+	//#pragma omp parallel for	
+	for (i = 0; i<n; i++)
+	{
+		degree[i] = rhs.degree[i];
+		adj[i] = rhs.adj[i];
+	}
+	weight = rhs.weight;
 }
 
 /* Copying function. Makes the calling graph same as the passed graph, but removes isolated vertices
@@ -1012,6 +1305,28 @@ KGraph KGraph::CreatePowerGraph(long s)
 	return g;
 }
 
+KGraph KGraph::CreatePowerGraphWeighted(long s)
+{
+	KGraph g(n);
+	g.m = 0;
+
+	for (long i = 0; i<n; i++)
+	{
+		vector<long> dist = ShortestPathsWeighted(i);
+		for (long j = 0; j<n; j++)
+		{
+			if (i != j && dist[j] <= s)
+			{
+				g.adj[i].push_back(j);
+				g.degree[i]++;
+				g.m++;
+			}
+		}
+	}
+	g.m /= 2;
+	return g;
+}
+
 vector<long> KGraph::FindHeuristicClique(vector<long> &degeneracyorder, vector<long> &rightdegree)
 {
 	vector<long> clique;
@@ -1533,6 +1848,70 @@ void KGraph::ReadSNAPGraph(string file)
 	m = m / 2;
 	cerr << m << " edges read\n";
 }
+
+/* Reads a weighted graph from a file.*/
+void KGraph::ReadWeightedGraph(string file)
+{
+	cerr << "ReadWeightedGraph ";
+	m = 0;
+	n = 0;
+	long w;
+	Delta = 0;
+	string temp;
+	long u, v;
+	ifstream input;
+	char* t = "";
+	input.open(file.c_str(), ios::in);
+	if (!input.is_open())
+	{
+		cout << "File not found\n";
+		exit(-1);
+	}
+	input >> n >> temp >> m >> temp;
+
+	cerr << n << " nodes, " << m << " edges suggested. ";
+
+	adj = new vector<long>[n];
+	degree = new long[n];
+	memset(degree, 0, n * sizeof(int));
+
+	weight = new vector<double>[n];
+
+	cerr << "Wait till " << m / 1000000 << " dots: ";
+	for (long i = 0; i<m; i++)
+	{
+		if ((i + 2) % 1000000 == 0)
+			cerr << ".";
+		input >> u >> v >> w;
+		if (u == v)
+			continue;
+		adj[u].push_back(v);
+		adj[v].push_back(u);
+		/*cerr << "\n";
+		cerr << "u is " << u << ", v is " << v << ", w is " << w << endl;*/
+		//weight of arc (u,adj[u][v]) is weight[u][v]
+		weight[u].push_back(w);
+		weight[v].push_back(w);
+	}
+	cerr << endl;
+	m = 0;
+	for (long i = 0; i<n; i++)
+	{
+		sort(adj[i].begin(), adj[i].end());
+		adj[i].erase(unique(adj[i].begin(), adj[i].end()), adj[i].end());
+		degree[i] = adj[i].size();
+		m += degree[i];
+		Delta = max(degree[i], Delta);
+		if (adj[i].size() != degree[i])
+		{
+			cerr << "Error in ReadDirectedGraphFromFile\n";
+			exit(0);
+		}
+	}
+	m = m / 2;
+	cerr << m << " edges read\n";
+}
+
 
 /* Writes the graph to a file in the SNAP format.
 * The format is described at http://snap.stanford.edu/data/index.html
