@@ -32,6 +32,10 @@ public:
 	vector<long> ShortestPathsUnweighted(long origin, vector<bool> &S);
 	//Added by Ali
 	vector<long> ShortestPathsUnweighted(long origin, vector<bool> &S, vector<long> &Pre);
+	vector<long> ShortestPathsWeighted(long origin);
+	vector<long> ShortestPathsWeighted(long origin, vector<bool> &S);
+	vector<long> ShortestPathsWeighted(long origin, vector<bool> &S, vector<long> &Pre);
+	vector<long> BinaryHeapDijkstra(long origin, long sink, vector<bool> &S);
 
 	vector< vector<bool> > CreateAdjacenyMatrix();
 	bool DeleteNode(long i);
@@ -42,6 +46,7 @@ public:
 
 
 	vector<double> *weight; // stores the edge weight.
+	//void Edgeweight(KGraph &g); // Assigns weights to arcs of graph 
 
 
 
@@ -51,6 +56,7 @@ public:
 	long m;             // num of edges
 	long Delta;         // higest degree. As of now, is instanciated when graph is read or copied, not maintained afterwards
 	string name;        // name of the graph. Could be anything.
+	
 
 						/* Constructors */
 	KGraph();
@@ -65,6 +71,7 @@ public:
 	void ReadDIMACSGraphParallel(string file);
 	void ReadDATGraph(string file);
 	void ReadSNAPGraph(string file);
+	void ReadWeightedGraph(string file);
 	bool WriteGVizGraph(string outfile);
 	void WriteSNAPGraph(string outfile);
 	void WriteDIMACSGraph(string outfile);
@@ -72,6 +79,7 @@ public:
 	/* General purpose utility functions */
 	bool CheckValid();
 	void Duplicate(const KGraph &rhs);
+	void DuplicateForWeighted(const KGraph &rhs);
 	void DuplicateConnected(const KGraph &rhs, map<long, long> &node_map);
 	bool AddEdge(long i, long j, bool reverseToo, bool safe);
 	bool DeleteEdge(long i, long j, bool reverseToo, bool safe);
@@ -107,6 +115,9 @@ public:
 	vector<long> FindHeuristicClique(vector<long> &degeneracyorder, vector<long> &rightdegree);
 	vector<long> FindDegeneracyOrdering(vector<long> &rightdegree);
 	vector<long> FindVerticesOfKCore(vector<long> &degeneracyorder, vector<long> &rightdegree, long k);
+
+	//Added by Ali
+	KGraph CreatePowerGraphWeighted(long s);
 
 	void FindInducedGraph(vector<bool> &S);
 	void FindInducedGraph(vector<long> &S);
