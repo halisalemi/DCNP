@@ -1305,27 +1305,6 @@ KGraph KGraph::CreatePowerGraph(long s)
 	return g;
 }
 
-KGraph KGraph::CreatePowerGraphWeighted(long s)
-{
-	KGraph g(n);
-	g.m = 0;
-
-	for (long i = 0; i<n; i++)
-	{
-		vector<long> dist = ShortestPathsWeighted(i);
-		for (long j = 0; j<n; j++)
-		{
-			if (i != j && dist[j] <= s)
-			{
-				g.adj[i].push_back(j);
-				g.degree[i]++;
-				g.m++;
-			}
-		}
-	}
-	g.m /= 2;
-	return g;
-}
 
 vector<long> KGraph::FindHeuristicClique(vector<long> &degeneracyorder, vector<long> &rightdegree)
 {
@@ -1432,12 +1411,26 @@ vector<long> KGraph::FindDegeneracyOrdering(vector<long> &rightdegree)
 	return vert;
 }
 
-//void KGraph::FindInducedGraph(vector<bool> &S)
-//{
-//	for (long i = 0; i<n; i++)
-//		if (!S[i])
-//			DeleteNode(i);
-//}
+KGraph KGraph::CreatePowerGraphWeighted(long s)
+{
+	KGraph g(n);
+	g.m = 0;
+
+	for (long i = 0; i<n; i++)
+	{
+		vector<long> dist = ShortestPathsWeighted(i);
+		for (long j = 0; j<n; j++)
+		{
+			if (i != j && dist[j] <= s)
+			{
+				g.adj[i].push_back(j);
+				g.degree[i]++;
+				g.m++;
+			}
+		}
+	}
+	return g;
+}
 
 void KGraph::FindInducedGraph(vector<long> &S)
 {
@@ -1869,6 +1862,7 @@ void KGraph::ReadWeightedGraph(string file)
 	}
 	input >> n >> temp >> m >> temp;
 
+
 	cerr << n << " nodes, " << m << " edges suggested. ";
 
 	adj = new vector<long>[n];
@@ -1876,6 +1870,8 @@ void KGraph::ReadWeightedGraph(string file)
 	memset(degree, 0, n * sizeof(int));
 
 	weight = new vector<double>[n];
+	long mcopy = m;
+	long ncopy=n;
 
 	cerr << "Wait till " << m / 1000000 << " dots: ";
 	for (long i = 0; i<m; i++)
@@ -1887,9 +1883,6 @@ void KGraph::ReadWeightedGraph(string file)
 			continue;
 		adj[u].push_back(v);
 		adj[v].push_back(u);
-		/*cerr << "\n";
-		cerr << "u is " << u << ", v is " << v << ", w is " << w << endl;*/
-		//weight of arc (u,adj[u][v]) is weight[u][v]
 		weight[u].push_back(w);
 		weight[v].push_back(w);
 	}
@@ -1908,6 +1901,57 @@ void KGraph::ReadWeightedGraph(string file)
 			exit(0);
 		}
 	}
+
+	for (long i = 0; i < n; i++)
+	{
+		//cerr << "i = " << i << endl;
+		weight[i].resize(adj[i].size());
+		for (long counter = 0; counter < degree[i]; counter++)
+		{
+			//cerr << "counter = " << counter << endl;
+			string temp1;
+			long u1, v1, w1;
+			ifstream input1;
+			char* t1 = "";
+			input1.open(file.c_str(), ios::in);
+			if (!input1.is_open())
+			{
+				cout << "File not found\n";
+				exit(-1);
+			}
+			input1 >> ncopy >> temp1 >> mcopy >> temp1;
+			long j = adj[i][counter];
+			//cerr << "j = " << j << endl;
+			//now find i and j in input file
+			for (long q = 0; q < mcopy; q++)
+			{
+				if ((q + 2) % 1000000 == 0)
+					cerr << ".";
+				//cerr << "q = " << q << endl;
+				input1 >> u1 >> v1 >> w1;
+				//cerr << "u = " << u1 << ", and v = " << v1 << endl;
+				if (u1 == i && v1 == j && i < j)
+				{
+					weight[i][counter] = w1;
+					//cerr << "w1 = " << w1 << endl;
+					break;
+				}
+				if (v1 == i && u1 == j /*&& i > j*/)
+				{
+					weight[i][counter] = w1;
+					//cerr << "w1 = " << w1 << endl;
+					break;
+				}
+			}
+		}
+	}
+	/*for (long i = 0; i < n; i++)
+	{
+		for (long counter = 0; counter < degree[i]; counter++)
+		{
+			cerr << "i is " << i << ", and it is " << weight[i][counter] << endl;
+		}
+	}*/
 	m = m / 2;
 	cerr << m << " edges read\n";
 }
