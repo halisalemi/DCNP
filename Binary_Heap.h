@@ -1,3 +1,6 @@
+/*We have adapted the code from website
+https://www.geeksforgeeks.org/dijkstras-algorithm-for-adjacency-list-representation-greedy-algo-8/
+to work with our code*/
 #ifndef BINARYHEAP_H
 #define BINARYHEAP_H
 #include<iostream>
@@ -64,4 +67,3 @@ bool isInMinHeap(struct BinaryHeap *minHeap, long v);
 
 
 #endif
-
