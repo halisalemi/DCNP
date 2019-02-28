@@ -1,3 +1,6 @@
+/*We have adapted the code from website 
+https://www.geeksforgeeks.org/dijkstras-algorithm-for-adjacency-list-representation-greedy-algo-8/
+to work with our code*/
 #include<iostream>
 #include<climits>
 #include <limits.h>
