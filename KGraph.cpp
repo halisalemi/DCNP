@@ -1305,6 +1305,29 @@ KGraph KGraph::CreatePowerGraph(long s)
 	return g;
 }
 
+KGraph KGraph::CreatePowerGraphWeighted(long s)
+{
+	KGraph g(n);
+	g.m = 0;
+
+	for (long i = 0; i<n; i++)
+	{
+		vector<long> dist = ShortestPathsWeighted(i);
+		for (long j = 0; j<n; j++)
+		{
+			if (i != j && dist[j] <= s)
+			{
+				//cerr << "i = " << i << ", and j = " << j << endl;
+				g.adj[i].push_back(j);
+				g.degree[i]++;
+				g.m++;
+			}
+		}
+	}
+	g.m /= 2;
+	return g;
+}
+
 
 vector<long> KGraph::FindHeuristicClique(vector<long> &degeneracyorder, vector<long> &rightdegree)
 {
@@ -1411,26 +1434,6 @@ vector<long> KGraph::FindDegeneracyOrdering(vector<long> &rightdegree)
 	return vert;
 }
 
-KGraph KGraph::CreatePowerGraphWeighted(long s)
-{
-	KGraph g(n);
-	g.m = 0;
-
-	for (long i = 0; i<n; i++)
-	{
-		vector<long> dist = ShortestPathsWeighted(i);
-		for (long j = 0; j<n; j++)
-		{
-			if (i != j && dist[j] <= s)
-			{
-				g.adj[i].push_back(j);
-				g.degree[i]++;
-				g.m++;
-			}
-		}
-	}
-	return g;
-}
 
 void KGraph::FindInducedGraph(vector<long> &S)
 {
@@ -1904,11 +1907,9 @@ void KGraph::ReadWeightedGraph(string file)
 
 	for (long i = 0; i < n; i++)
 	{
-		//cerr << "i = " << i << endl;
-		weight[i].resize(adj[i].size());
+		weight[i].resize(degree[i]);
 		for (long counter = 0; counter < degree[i]; counter++)
 		{
-			//cerr << "counter = " << counter << endl;
 			string temp1;
 			long u1, v1, w1;
 			ifstream input1;
@@ -1921,37 +1922,25 @@ void KGraph::ReadWeightedGraph(string file)
 			}
 			input1 >> ncopy >> temp1 >> mcopy >> temp1;
 			long j = adj[i][counter];
-			//cerr << "j = " << j << endl;
 			//now find i and j in input file
 			for (long q = 0; q < mcopy; q++)
 			{
 				if ((q + 2) % 1000000 == 0)
 					cerr << ".";
-				//cerr << "q = " << q << endl;
 				input1 >> u1 >> v1 >> w1;
-				//cerr << "u = " << u1 << ", and v = " << v1 << endl;
-				if (u1 == i && v1 == j && i < j)
+				if (u1 == i && v1 == j)
 				{
 					weight[i][counter] = w1;
-					//cerr << "w1 = " << w1 << endl;
 					break;
 				}
-				if (v1 == i && u1 == j /*&& i > j*/)
+				if (v1 == i && u1 == j)
 				{
 					weight[i][counter] = w1;
-					//cerr << "w1 = " << w1 << endl;
 					break;
 				}
 			}
 		}
 	}
-	/*for (long i = 0; i < n; i++)
-	{
-		for (long counter = 0; counter < degree[i]; counter++)
-		{
-			cerr << "i is " << i << ", and it is " << weight[i][counter] << endl;
-		}
-	}*/
 	m = m / 2;
 	cerr << m << " edges read\n";
 }
