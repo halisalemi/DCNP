@@ -520,6 +520,7 @@ vector<long> solveDCNP_thin_formulation_weighted(KGraph &g, long k, long b, vect
 
 	cerr << "creating power graph " << endl;
 	KGraph gs = g.CreatePowerGraphWeighted(k);
+	cerr << "|E^k| = " << gs.m << endl;
 
 	try
 	{
@@ -554,13 +555,10 @@ vector<long> solveDCNP_thin_formulation_weighted(KGraph &g, long k, long b, vect
 			for (long i = 0; i < gs.adj[u].size(); i++)
 			{
 				long v = gs.adj[u][i];
-				if (v > u)
-				{
-					hash_edges.insert(make_pair(u*gs.n + v, cur++));
-					//cerr << "u = " << u << ", v = " << v << endl;
-				}
+				if (v > u) hash_edges.insert(make_pair(u*gs.n + v, cur++));
 			}
 		}
+
 
 
 		cerr << "Fixing variables" << endl;
@@ -683,6 +681,8 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 				if (v > u) hash_edges.insert(make_pair(u*gs.n + v, cur++));
 			}
 		}
+
+		cerr << "number of hashed edges are " << hash_edges.size() << endl;
 
 
 		cerr << "Fixing variables" << endl;
