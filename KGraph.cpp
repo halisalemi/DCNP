@@ -6,7 +6,6 @@
 #include <set>
 #include <map>
 #include <omp.h>
-#include "Clique.h"
 #include "Binary_Heap.h"
 using namespace std;
 
