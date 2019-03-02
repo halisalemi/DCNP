@@ -1,7 +1,5 @@
 #include "GRBInterface.h"
 #include "KGraph.h"
-#include "Clique.h"
-#include "wkplex.h"
 #include <sstream>
 #include <string>
 #include <ctime>
