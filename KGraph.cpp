@@ -1066,7 +1066,7 @@ bool KGraph::HasKCommonNeighbors(long u, long v, long k)
 	return false;
 }
 
-/* Returns the sorted list of common neighbors node u has with v */
+/* Returns number of common neighbors node u has with v */
 long KGraph::CommonNeighbors(long u, vector<long> &v)
 {
 	long t = 0;
@@ -1316,7 +1316,6 @@ KGraph KGraph::CreatePowerGraphWeighted(long s)
 		{
 			if (i != j && dist[j] <= s)
 			{
-				//cerr << "i = " << i << ", and j = " << j << endl;
 				g.adj[i].push_back(j);
 				g.degree[i]++;
 				g.m++;
@@ -1875,11 +1874,8 @@ void KGraph::ReadWeightedGraph(string file)
 	long mcopy = m;
 	long ncopy=n;
 
-	cerr << "Wait till " << m / 1000000 << " dots: ";
 	for (long i = 0; i<m; i++)
 	{
-		if ((i + 2) % 1000000 == 0)
-			cerr << ".";
 		input >> u >> v >> w;
 		if (u == v)
 			continue;
@@ -1903,9 +1899,12 @@ void KGraph::ReadWeightedGraph(string file)
 			exit(0);
 		}
 	}
-
+	cerr << "Wait till " << n / 1000 << " dots: " << endl;
 	for (long i = 0; i < n; i++)
 	{
+		if ((i + 2) % 1000 == 0)
+			cerr << ".";
+
 		weight[i].resize(degree[i]);
 		for (long counter = 0; counter < degree[i]; counter++)
 		{
@@ -1914,18 +1913,10 @@ void KGraph::ReadWeightedGraph(string file)
 			ifstream input1;
 			char* t1 = "";
 			input1.open(file.c_str(), ios::in);
-			if (!input1.is_open())
-			{
-				cout << "File not found\n";
-				exit(-1);
-			}
 			input1 >> ncopy >> temp1 >> mcopy >> temp1;
 			long j = adj[i][counter];
-			//now find i and j in input file
-			for (long q = 0; q < mcopy; q++)
+			for (long q = 0; q < mcopy; q++) //now find i and j in input file
 			{
-				if ((q + 2) % 1000000 == 0)
-					cerr << ".";
 				input1 >> u1 >> v1 >> w1;
 				if (u1 == i && v1 == j)
 				{
