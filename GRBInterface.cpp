@@ -1306,17 +1306,12 @@ vector<long> DCNP_Heuristic(KGraph &g, long k, long b)
 {
 	vector<long> D = FindTopTBetweennessCentralityNodes(g, 2 * b); //D contains top 2b betweenness centrality nodes
 	vector<long> D_Star;
-	float q_star = INFINITY;
 	vector<bool> NonDeleted(g.n, true);
 	long NumOfClosePairs = obj(g, NonDeleted, k);
 
 	for (long counter = 1; counter <= b + 1; counter++)
 	{
-		if (NumOfClosePairs <= q_star)
-		{
-			D_Star = D;
-			q_star = NumOfClosePairs;
-		}
+		D_Star = D;
 		vector<long> close_vertices;
 		vector<bool> current_nondeleted_vertices(g.n, true);
 
@@ -1333,7 +1328,6 @@ vector<long> DCNP_Heuristic(KGraph &g, long k, long b)
 			NumOfClosePairs = 0;
 			current_nondeleted_vertices[D[j]] = false;
 		}
-
 		long min_size = *min_element(close_vertices.begin(), close_vertices.end());
 		for (long i = 0; i < D.size(); i++)
 			if (close_vertices[i] == min_size)
