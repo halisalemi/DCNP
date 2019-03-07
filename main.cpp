@@ -15,41 +15,33 @@
 
 
 
-
 int main(int argc, char *argv[])
 {
 
-	//change the precision for outputting the running time. I want it to be rounded to 2 decimal places.
+	//change the precision for outputting the running time. It is rounded to 2 decimal places.
 	cout.setf(ios::fixed);
 	cout.precision(2);
+
 
 	time_t start_time = clock();
 	if (argc<2)
 		cerr << "ERROR: Not enough arguments.";
 
 
+	/*Preprocessing procedure to find the non-critical nodes
+	/*It works for arbitrary k and b and also for edge-weighted graphs*/
 	else if (strcmp(argv[1], "FindNonCriticalNodes") == 0)
 	{
 		KGraph g(argv[3], argv[3], argv[2]);
 
 		time_t Preprocessing_start = clock();
-		vector<long> set_I = Preprocessing(g);
-		cout << "Preprocessing time is " << (double)(clock() - Preprocessing_start) / CLOCKS_PER_SEC << " " << endl;
-		cerr << "Number of simplicial vertices fixed = " << set_I.size() << endl;
-		//for (long i = 0; i < set_I.size(); i++) cerr << set_I[i] << " ";
-	
-		long leaves = 0;
-		for (long i = 0; i<g.n; i++)
-			if (g.degree[i] == 1)
-			{
-				long v = g.adj[i][0];
-				if (g.degree[v] > 1 || i < v) leaves++;
-			}
-		cerr << "Number of leaves fixed = " << leaves << endl;
+		vector<long> set_I = FindNonCriticalNodes(g);
+		cerr << "Preprocessing time = " << (double)(clock() - Preprocessing_start) / CLOCKS_PER_SEC << " " << endl;
 	}
 
 
-	else if (strcmp(argv[1], "Heuristic") == 0)
+	//DCNP Heuristic to find distance-based critical nodes
+	else if (strcmp(argv[1], "DCNPHeuristic") == 0)
 	{
 		KGraph g(argv[3], argv[3], argv[2]);
 
@@ -59,16 +51,16 @@ int main(int argc, char *argv[])
 
 		time_t Heuristic_start = clock();
 		vector<long> Heuristic_sol = DCNP_Heuristic(g, k, b);
-		cout << "Heuristic time is " << (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC << endl;
-		cerr << "nodes chosen by heuristic are ";
+		cerr << "Heuristic time = " << (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC << endl;
+		cerr << "Nodes chosen by heuristic = ";
 		for (long i = 0; i < Heuristic_sol.size(); i++) cerr << Heuristic_sol[i] << " ";
 		cerr << endl;
-		cerr << "heuristic solution is " << obj(g, Heuristic_sol, k);
+		cerr << "Heuristic solution = " << obj(g, Heuristic_sol, k);
 	}
 
+
 	/*To solve DCNP when distances are measured in terms of hops
-	* Thin formulation is used.
-	* Integer separation is used.*/
+	* Thin formulation with integer separation is used. */
 	else if (strcmp(argv[1], "Thin") == 0)
 	{
 		KGraph g(argv[3], argv[3], argv[2]);
@@ -77,38 +69,23 @@ int main(int argc, char *argv[])
 		long b = atol(argv[5]); //budget 
 		time_t start = clock();
 
-
 		time_t Heuristic_start = clock();
 		vector<long> Heuristic_sol = DCNP_Heuristic(g, k, b);
-		//vector<long> Heuristic_sol;
-
-		cerr << "Heuristic time is " << (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC << endl;
 		double Heuristic_time = (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC;
-
-
+		cerr << "Heuristic time = " << Heuristic_time << endl;
+		
 		vector<long> criticalNodes = solveDCNP_thin_formulation(g, k, b, Heuristic_sol);
 
-		/*cout << "time in sec: " << (double)(clock() - start) / CLOCKS_PER_SEC << endl;
-		cout << "# nodes deleted equal " << criticalNodes.size() << endl;
-		cout << "** Label of deleted Node(s) is(are) ";
-		for (long i = 0; i < criticalNodes.size(); i++)
-		cout << criticalNodes[i] << " ";*/
-
-		//Use the following for batch files:
-		cout << g.name << " " << k << " " << b << " ";
-		cout << Heuristic_time << " ";
-		cout << (double)(clock() - start) / CLOCKS_PER_SEC << " ";
-		for (long i = 0; i < criticalNodes.size(); i++)
-		{
-			cout << criticalNodes[i] << " ";
-		}
-		cout << "\n";
+		cerr << "Total time = " << (double)(clock() - start) / CLOCKS_PER_SEC << endl;
+		cerr << "# critical nodes = " << criticalNodes.size() << endl;
+		cerr << "** Label of critical node(s) = ";
+		PrintVectorLong(criticalNodes);
+		cerr << "# close vertex pairs in G-D = " << obj(g, criticalNodes, k) << endl;
 	}
 
 
 	/*To solve DCNP in edge-weighted graphs.
-	* Thin formulation is used.
-	* Integer separation is used*/
+	* Thin formulation with integer separation is used.*/
 	else if (strcmp(argv[1], "Thin_weighted") == 0)
 	{
 		KGraph g(argv[3], argv[3], argv[2]);
@@ -118,36 +95,22 @@ int main(int argc, char *argv[])
 		time_t start = clock();
 
 		time_t Heuristic_start = clock();
-		//vector<long> Heuristic_sol = Greedy_Heuristic(g, k, b);
-		vector<long> Heuristic_sol;
-
-		cerr << "Heuristic time is " << (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC << endl;
+		vector<long> Heuristic_sol = DCNP_Heuristic(g, k, b);
 		double Heuristic_time = (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC;
-
-
+		cerr << "Heuristic time = " << Heuristic_time << endl;
+		
 		vector<long> criticalNodes = solveDCNP_thin_formulation_weighted(g, k, b, Heuristic_sol);
 
-		cout << "time in sec: " << (double)(clock() - start) / CLOCKS_PER_SEC << endl;
-		cout << "# nodes deleted equal " << criticalNodes.size() << endl;
-		cout << "** Label of deleted Node(s) is(are) ";
-		for (long i = 0; i < criticalNodes.size(); i++)
-		cout << criticalNodes[i] << " ";
-
-		//Use the following for batch files:
-		/*cout << g.name << " " << k << " " << b << " ";
-		cout << Heuristic_time << " ";
-		cout << (double)(clock() - start) / CLOCKS_PER_SEC << " ";
-		for (long i = 0; i < criticalNodes.size(); i++)
-		{
-			cout << criticalNodes[i] << " ";
-		}
-		cout << "\n";*/
+		cerr << "Total time = " << (double)(clock() - start) / CLOCKS_PER_SEC << endl;
+		cerr << "# critical nodes = " << criticalNodes.size() << endl;
+		cerr << "** Label of critical node(s) = ";
+		PrintVectorLong(criticalNodes);
+		cerr << "# close vertex pairs in G-D = " << obj_weighted(g, criticalNodes, k) << endl;
 	}
 
 
-	/*To solve DCNP with Thin formulation when distances 
-	  are measured in terms of hops.
-	  fractional separation is used. */
+	/*To solve DCNP when distances are measured in terms of hops
+	* Thin formulation with fractional separation is used. */
 	else if (strcmp(argv[1], "Thin_fractional") == 0)
 	{
 		KGraph g(argv[3], argv[3], argv[2]);
@@ -158,32 +121,29 @@ int main(int argc, char *argv[])
 
 		time_t Heuristic_start = clock();
 		vector<long> Heuristic_sol = DCNP_Heuristic(g, k, b);
-		cerr << "Heuristic time is " << (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC << endl;
 		double Heuristic_time = (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC;
-
-		//vector<long> Heuristic_sol;
+		cerr << "Heuristic time = " << Heuristic_time << endl;
+		
 
 		vector<long> criticalNodes = solveDCNP_thin_formulation_fractional(g, k, b, Heuristic_sol);
 
-		cout << "time in sec: " << (double)(clock() - start) / CLOCKS_PER_SEC << endl;
-		cout << "# nodes deleted equal " << criticalNodes.size() << endl;
-		cout << "** Label of deleted Node(s) is(are) ";
-		for (long i = 0; i < criticalNodes.size(); i++)
-		cout << criticalNodes[i] << " ";
+		cerr << "Total time = " << (double)(clock() - start) / CLOCKS_PER_SEC << endl;
+		cerr << "# critical nodes = " << criticalNodes.size() << endl;
+		cerr << "** Label of critical node(s) =  ";
+		PrintVectorLong(criticalNodes);
+		cerr << "# close vertex pairs in G-D = " << obj(g, criticalNodes, k) << endl;
 
 		//Use the following for batch files:
-		/*cout << g.name << " " << k << " " << b << " ";
+		cout << g.name << " " << k << " " << b << " ";
 		cout << Heuristic_time << " ";
 		cout << (double)(clock() - start) / CLOCKS_PER_SEC << " ";
-		for (long i = 0; i < criticalNodes.size(); i++)
-		{
-			cout << criticalNodes[i] << " ";
-		}
-		cout << "\n";*/
+		cout << obj(g, criticalNodes, k) << " ";
+		cout << "\n";
 	}
 
-	/*To solve DCNP with Path-like formulation when distances 
-	  are measured in terms of hops and k=3. */
+
+	/*To solve DCNP when distances are measured in terms of hops and k=3 
+	 * Path-like formulation is used */
 	else if (strcmp(argv[1], "Path_like_k3") == 0)
 	{
 		KGraph g(argv[3], argv[3], argv[2]);
@@ -193,27 +153,17 @@ int main(int argc, char *argv[])
 
 		time_t Heuristic_start = clock();
 		vector<long> Heuristic_sol = DCNP_Heuristic(g, 3, b);
-		cerr << "Heuristic time is " << (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC << endl;
 		double Heuristic_time = (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC;
-		//vector<long> Heuristic_sol;
+		cout << "Heuristic time = " << Heuristic_time << endl;
+		
 
 		vector<long> criticalNodes = solveDCNP_path_like_k3(g, b, Heuristic_sol);
 
-		/*cout << "time in sec: " << (double)(clock() - start) / CLOCKS_PER_SEC << endl;
-		cout << "# nodes deleted equal " << criticalNodes.size() << endl;
-		cout << "** Label of deleted Node(s) is(are) ";
-		for (long i = 0; i < criticalNodes.size(); i++)
-		cout << criticalNodes[i] << " ";*/
-
-		//Use the following for batch files:
-		cout << g.name << " " << 3 << " " << b << " ";
-		cout << (double)(clock() - start) / CLOCKS_PER_SEC << " ";
-		cout << Heuristic_time << " ";
-		for (long i = 0; i < criticalNodes.size(); i++)
-		{
-			cout << criticalNodes[i] << " ";
-		}
-		cout << "\n";
+		cerr << "Total time = " << (double)(clock() - start) / CLOCKS_PER_SEC << endl;
+		cerr << "# critical nodes = " << criticalNodes.size() << endl;
+		cerr << "** Label of critical node(s) =  ";
+		PrintVectorLong(criticalNodes);
+		cerr << "# close vertex pairs in G-D = " << obj(g, criticalNodes, 3) << endl;
 	}
 
 
@@ -229,34 +179,21 @@ int main(int argc, char *argv[])
 
 		time_t Heuristic_start = clock();
 		vector<long> Heuristic_sol = DCNP_Heuristic(g, k, b);
-		cerr << "Heuristic time is " << (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC << endl;
 		double Heuristic_time = (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC;
-		//vector<long> Heuristic_sol;
-
+		cerr << "Heuristic time = " << Heuristic_time << endl;
+		
 		vector<long> criticalNodes = solveDCNP_Veremyev(g, k, b, Heuristic_sol);
 
-		cout << "time in sec: " << (double)(clock() - start) / CLOCKS_PER_SEC << endl;
-		cout << "# nodes Deleted equal " << criticalNodes.size() << endl;
-		cout << "** Label of deleted Node(s) is(are) ";
-		for (long i = 0; i < criticalNodes.size(); i++)
-		{
-			cout << criticalNodes[i] << " ";
-		}
-
-		//Use the following for batch files:
-		/*cout << g.name << " " << k << " " << b << " ";
-		cout << (double)(clock() - start) / CLOCKS_PER_SEC << " ";
-		cout << Heuristic_time << " ";
-		for (long i = 0; i < criticalNodes.size(); i++)
-		{
-		cout << criticalNodes[i] << " ";
-		}
-		cout << "\n";*/
+		cerr << "Total time = " << (double)(clock() - start) / CLOCKS_PER_SEC << endl;
+		cerr << "# critical nodes = " << criticalNodes.size() << endl;
+		cerr << "** Label of critical node(s) =  ";
+		PrintVectorLong(criticalNodes);
+		cerr << "# close vertex pairs in G-D = " << obj(g, criticalNodes, k) << endl;
 	}
 
 	else
 	{
-		cout << "ERROR: Your command is not valid.";
+		cout << "ERROR: Your command is not valid." << endl;
 	}
 	return EXIT_SUCCESS;
 }
