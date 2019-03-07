@@ -132,13 +132,6 @@ int main(int argc, char *argv[])
 		cerr << "** Label of critical node(s) =  ";
 		PrintVectorLong(criticalNodes);
 		cerr << "# close vertex pairs in G-D = " << obj(g, criticalNodes, k) << endl;
-
-		//Use the following for batch files:
-		cout << g.name << " " << k << " " << b << " ";
-		cout << Heuristic_time << " ";
-		cout << (double)(clock() - start) / CLOCKS_PER_SEC << " ";
-		cout << obj(g, criticalNodes, k) << " ";
-		cout << "\n";
 	}
 
 
