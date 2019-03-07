@@ -21,24 +21,12 @@ struct classcomp
 			if (lhs[i] < rhs[i]) return 1;
 			if (lhs[i] > rhs[i]) return 0;
 		}
-
 		return 0;
 	}
 };
 
 std::map<std::vector<long>, long, classcomp> EnumerateLength3Connector(KGraph &g);
 
-std::map<std::vector<long>, long, classcomp> EnumerateLength4Connector(KGraph &g);
-
-void EnumerateLength4ConnectorType1(KGraph &g, map<vector<long>, long, classcomp>&map, long &mapsize);
-
-void EnumerateLength4ConnectorType2(KGraph &g, map<vector<long>, long, classcomp>&map, long &mapsize);
-
-void EnumerateLength4ConnectorType3(KGraph &g, map<vector<long>, long, classcomp>&map, long &mapsize);
-
-void EnumerateLength4ConnectorType4(KGraph &g, map<vector<long>, long, classcomp>&map, long &mapsize);
-
-
-
 vector<long> sortnodes(long i, long j, long k);
 vector<long> sort4nodes(long i, long j, long k, long t);
+
