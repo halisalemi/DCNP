@@ -1,6 +1,5 @@
 #ifndef KGRAPH_H
 #define KGRAPH_H
-//#include <ilcplex/cplex.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -19,7 +18,6 @@ vector<long> SetIntersectionOfSortedLists(vector<long>&u, vector<long>&v);
 class KGraph
 {
 public:
-	// start new functions by Austin
 	bool IsConnected(vector<long> S);
 	bool IsConnected(vector<bool> S);
 	bool IsConnected();
@@ -40,14 +38,11 @@ public:
 	vector< vector<bool> > CreateAdjacenyMatrix();
 	bool DeleteNode(long i);
 	void ComplementGraph(const KGraph &rhs);
-	// end new functions by Austin
 
 	vector<long> *adj;  // stores the adj lists. Each list is maintained as a sorted vector.
 
 
 	vector<double> *weight; // stores the edge weight.
-	//void Edgeweight(KGraph &g); // Assigns weights to arcs of graph 
-
 
 
 	long *degree;       // stores the degree seq
@@ -115,12 +110,11 @@ public:
 	vector<long> FindHeuristicClique(vector<long> &degeneracyorder, vector<long> &rightdegree);
 	vector<long> FindDegeneracyOrdering(vector<long> &rightdegree);
 	vector<long> FindVerticesOfKCore(vector<long> &degeneracyorder, vector<long> &rightdegree, long k);
-
-	//Added by Ali
 	KGraph CreatePowerGraphWeighted(long s);
 
 	void FindInducedGraph(vector<bool> &S);
 	void FindInducedGraph(vector<long> &S);
+
 };
 
 #endif
