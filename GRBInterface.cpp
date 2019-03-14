@@ -35,94 +35,26 @@ void PrintVectorLong(vector<long>&S)
 	cerr << "\n";
 }
 
-long integer_separation_weighted::numCallbacks = 0;
-double integer_separation_weighted::TotalCallbackTime = 0;
-long integer_separation_weighted::numLazyCutsInteger = 0;
+
+long IntegerSeparation::numCallbacks = 0;
+double IntegerSeparation::TotalCallbackTime = 0;
+long IntegerSeparation::numLazyCutsInteger = 0;
 
 
-long integer_separation::numCallbacks = 0;
-double integer_separation::TotalCallbackTime = 0;
-long integer_separation::numLazyCutsInteger = 0;
+long IntegerSeparationWeighted::numCallbacks = 0;
+double IntegerSeparationWeighted::TotalCallbackTime = 0;
+long IntegerSeparationWeighted::numLazyCutsInteger = 0;
 
 
-long fractional_separation::numCallbacks = 0;
-double fractional_separation::TotalCallbackTimeInteger = 0;
-double fractional_separation::TotalCallbackTimeFractional = 0;
-long fractional_separation::numLazyCutsInteger = 0;
-long fractional_separation::numLazyCutsFractional = 0;
-
+long FractionalSeparation::numCallbacks = 0;
+double FractionalSeparation::TotalCallbackTimeInteger = 0;
+double FractionalSeparation::TotalCallbackTimeFractional = 0;
+long FractionalSeparation::numLazyCutsInteger = 0;
+long FractionalSeparation::numLazyCutsFractional = 0;
 
 double ViolationThreshold = 0.05;
 
-
-
-void integer_separation_weighted::callback()
-{
-	try
-	{
-		if (where == GRB_CB_MIPSOL)
-		{
-			numCallbacks++;
-			time_t start = clock();
-
-			//g1 is duplicate of power graph and g2 is duplicate of original graph
-
-			//get the solution vector (for y variables) from Gurobi 
-			double *y = new double[g1.n];
-			y = getSolution(vars, g1.n);
-
-			//now, make it boolean
-			vector<bool> NonDeletedVertices(g1.n, false);
-			NonDeletedVertices = boolify(y, g1.n);
-			NonDeletedVertices.flip();
-
-
-			//get the solution vector (for x variables) from Gurobi
-			double *x = new double[g1.m];
-			x = getSolution(vars1, g1.m);
-
-			//find a violated length-k i,j-connector inequality (if any exist)
-			vector<long> predecessor;
-			vector<long> distance_from_i;
-			for (long i = 0; i < g2.n; i++)
-			{
-				distance_from_i = g2.ShortestPathsWeighted(i, NonDeletedVertices, predecessor);
-				for (long counter = 0; counter < g1.degree[i]; counter++)
-				{
-					long j = g1.adj[i][counter];
-					if (j > i && distance_from_i[j] <= k1 && x[hashing[i*g2.n + j]] < 0.5)
-					{
-						GRBLinExpr expr = vars1[hashing[i*g2.n + j]] + vars[i] + vars[j];
-
-						long q = predecessor[j];
-						long ss = k1 - 1;
-						for (long counter = 2; counter <= k1; counter++)
-						{
-							expr += vars[q];
-							q = predecessor[q];
-							ss--;
-						}
-						addLazy(expr >= 1);
-						numLazyCutsInteger++;
-					}
-					predecessor.clear();
-				}
-			}
-			TotalCallbackTime += (double)(clock() - start) / CLOCKS_PER_SEC;
-		}
-	}
-	catch (GRBException e) {
-		cout << "Error number: " << e.getErrorCode() << endl;
-		cout << e.getMessage() << endl;
-	}
-	catch (...) {
-		cout << "Error during callback" << endl;
-	}
-}
-
-
-
-void integer_separation::callback()
+void IntegerSeparation::callback()
 {
 	try
 	{
@@ -132,33 +64,33 @@ void integer_separation::callback()
 			numCallbacks++;
 
 			//get the solution vector (for x and y variables) from Gurobi 
-			populate_y();
-			populate_x();
+			populate_x_MIPSOL();
+			populate_y_MIPSOL();
 
 			//now, make it boolean
-			vector<bool> NonDeletedVertices(g1.n, false);
-			NonDeletedVertices = boolify(y, g1.n);
+			vector<bool> NonDeletedVertices(n, false);
+			NonDeletedVertices = boolify(y, n);
 			NonDeletedVertices.flip();
 
 
 			//find a violated length-k i,j-connector inequality (if any exist)
 			vector<long> predecessor;
 			vector<long> distance_from_i;
-			for (long i = 0; i < g2.n; i++)
+			for (long i = 0; i < n; i++)
 			{
-				distance_from_i = g2.ShortestPathsUnweighted(i, NonDeletedVertices, predecessor);
-				for (long counter = 0; counter < g1.degree[i]; counter++)
+				distance_from_i = g->ShortestPathsUnweighted(i, NonDeletedVertices, predecessor);
+				for (long counter = 0; counter < gs->degree[i]; counter++)
 				{
-					long j = g1.adj[i][counter];
-					if (j > i && distance_from_i[j] <= k1 && x[hashing[i*g2.n + j]] < 0.5)
+					long j = gs->adj[i][counter];
+					if (j > i && distance_from_i[j] <= k && x[hashing[i*n + j]] < 0.5)
 					{
-						GRBLinExpr expr = vars1[hashing[i*g2.n + j]] + vars[i] + vars[j];
+						GRBLinExpr expr = xvars[hashing[i*n + j]] + yvars[i] + yvars[j];
 
 						long q = predecessor[j];
-						long ss = k1 - 1;
-						for (long counter = 2; counter <= k1; counter++)
+						long ss = k - 1;
+						for (long counter = 2; counter <= k; counter++)
 						{
-							expr += vars[q];
+							expr += yvars[q];
 							q = predecessor[q];
 							ss--;
 						}
@@ -180,8 +112,65 @@ void integer_separation::callback()
 	}
 }
 
+void IntegerSeparationWeighted::callback()
+{
+	try
+	{
+		if (where == GRB_CB_MIPSOL)
+		{
+			numCallbacks++;
+			time_t start = clock();
 
-void fractional_separation::callback()
+			populate_x_MIPSOL();
+			populate_y_MIPSOL();
+
+
+			//now, make it boolean
+			vector<bool> NonDeletedVertices(n, false);
+			NonDeletedVertices = boolify(y, n);
+			NonDeletedVertices.flip();
+
+
+			//find a violated length-k i,j-connector inequality (if any exist)
+			vector<long> predecessor;
+			vector<long> distance_from_i;
+			for (long i = 0; i < n; i++)
+			{
+				distance_from_i = g->ShortestPathsWeighted(i, NonDeletedVertices, predecessor);
+				for (long counter = 0; counter < gs->degree[i]; counter++)
+				{
+					long j = gs->adj[i][counter];
+					if (j > i && distance_from_i[j] <= k && x[hashing[i*n + j]] < 0.5)
+					{
+						GRBLinExpr expr = xvars[hashing[i*n + j]] + yvars[i] + yvars[j];
+
+						long q = predecessor[j];
+						long ss = k - 1;
+						for (long counter = 2; counter <= k; counter++)
+						{
+							expr += yvars[q];
+							q = predecessor[q];
+							ss--;
+						}
+						addLazy(expr >= 1);
+						numLazyCutsInteger++;
+					}
+					predecessor.clear();
+				}
+			}
+			TotalCallbackTime += (double)(clock() - start) / CLOCKS_PER_SEC;
+		}
+	}
+	catch (GRBException e) {
+		cout << "Error number: " << e.getErrorCode() << endl;
+		cout << e.getMessage() << endl;
+	}
+	catch (...) {
+		cout << "Error during callback" << endl;
+	}
+}
+
+void FractionalSeparation::callback()
 {
 	try
 	{
@@ -192,33 +181,30 @@ void fractional_separation::callback()
 			time_t start = clock();
 			numCallbacks++;
 
-			//get the solution vector (for x and y variables) from Gurobi 
-			populate_y();
-			populate_x();
+			//get the solution vector for x and y variables from Gurobi
+			populate_x_MIPSOL();
+			populate_y_MIPSOL();
 
-			//boolify non-deleted vertices
-			vector<bool> NonDeletedVertices(g1.n, false);
-			NonDeletedVertices = boolify(y, g1.n);
+			vector<bool> NonDeletedVertices(n, false);
+			NonDeletedVertices = boolify(y, n);
 			NonDeletedVertices.flip();
 
-			//find a violated length-k i,j-connector inequality (if any exist)
 			vector<long> predecessor;
 			vector<long> distance_from_i;
-			for (long i = 0; i < g2.n; i++)
+			for (long i = 0; i < n; i++)
 			{
-				distance_from_i = g2.ShortestPathsUnweighted(i, NonDeletedVertices, predecessor);
-				for (long counter = 0; counter < g1.degree[i]; counter++)
+				distance_from_i = g->ShortestPathsUnweighted(i, NonDeletedVertices, predecessor);
+				for (long counter = 0; counter < gs->degree[i]; counter++)
 				{
-					long j = g1.adj[i][counter];
-					if (j > i && distance_from_i[j] <= k1 && x[hashing[i*g2.n + j]] < 0.5)
+					long j = gs->adj[i][counter];
+					if (j > i && distance_from_i[j] <= k && x[hashing[i*n + j]] < 0.5)
 					{
-						GRBLinExpr expr = vars1[hashing[i*g2.n + j]] + vars[i] + vars[j];
-
+						GRBLinExpr expr = xvars[hashing[i*n + j]] + yvars[i] + yvars[j];
 						long q = predecessor[j];
-						long ss = k1 - 1;
-						for (long counter = 2; counter <= k1; counter++)
+						long ss = k - 1;
+						for (long counter = 2; counter <= k; counter++)
 						{
-							expr += vars[q];
+							expr += yvars[q];
 							q = predecessor[q];
 							ss--;
 						}
@@ -237,26 +223,26 @@ void fractional_separation::callback()
 			numCallbacks++;
 			time_t start = clock();
 
-			//get the solution vector (for y variables) from Gurobi 
-			populate1_y();
-			populate1_x();
+			//get the solution vector for x and y variables from Gurobi
+			populate_x_MIPNODE();
+			populate_y_MIPNODE();
 
-			for (long i = 0; i < g2.n; i++)
+			for (long i = 0; i < n; i++)
 			{
-				d_and_p output = d_and_p_function(g2, g1, i, k1, y);
-				for (long counter3 = 0; counter3 < g1.degree[i]; counter3++)
+				d_and_p output = d_and_p_function(*g, *gs, i, k, y);
+				for (long counter3 = 0; counter3 < gs->degree[i]; counter3++)
 				{
-					long j = g1.adj[i][counter3];
+					long j = gs->adj[i][counter3];
 					if (j > i) //because of hashing
 					{
-						if (1 - x[hashing[i*g2.n + j]] - output.d[j][k1] > ViolationThreshold)
+						if (1 - x[hashing[i*n + j]] - output.d[j][k] > ViolationThreshold)
 						{
-							GRBLinExpr expr = vars1[hashing[i*g2.n + j]] + vars[j] + vars[i];
-							long q = output.p[j][k1];
-							long ss = k1 - 1;
-							for (long counter = 2; counter <= k1; counter++)
+							GRBLinExpr expr = xvars[hashing[i*n + j]] + yvars[j] + yvars[i];
+							long q = output.p[j][k];
+							long ss = k - 1;
+							for (long counter = 2; counter <= k; counter++)
 							{
-								expr += vars[q];
+								expr += yvars[q];
 								q = output.p[q][ss];
 								ss--;
 							}
@@ -367,9 +353,8 @@ vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> 
 
 
 		cerr << "Adding lazy constraints" << endl;
-		integer_separation cb = integer_separation(X, hash_edges, Y, gs, g, k, b);
+		IntegerSeparation cb = IntegerSeparation(X, Y, &g, &gs, hash_edges,k,b);
 		model.setCallback(&cb);
-
 
 		cerr << "Providing Initial Solution" << endl;
 		for (long i = 0; i<g.n; i++)
@@ -400,9 +385,9 @@ vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> 
 
 		long NumOfBandBNodes = (long)model.get(GRB_DoubleAttr_NodeCount);
 		cerr << "# B&B nodes = " << NumOfBandBNodes << endl;
-		cerr << "# callbacks = " << integer_separation::numCallbacks << endl;
-		cerr << "# lazy cuts = " << integer_separation::numLazyCutsInteger << endl;
-		cout << "Time spent in callback = " << integer_separation::TotalCallbackTime << endl;
+		cerr << "# callbacks = " << IntegerSeparation::numCallbacks << endl;
+		cerr << "# lazy cuts = " << IntegerSeparation::numLazyCutsInteger << endl;
+		cout << "Time spent in callback = " << IntegerSeparation::TotalCallbackTime << endl;
 
 
 		for (long i = 0; i < g.n; i++)
@@ -437,7 +422,7 @@ vector<long> solveDCNP_thin_formulation_weighted(KGraph &g, long k, long b, vect
 		GRBEnv env = GRBEnv();
 		//env.set(GRB_IntParam_OutputFlag, 0);
 		env.set(GRB_IntParam_Method, 3); //use concurrent method to solve LP relaxation.
-		env.set(GRB_DoubleParam_TimeLimit, 36000);
+		env.set(GRB_DoubleParam_TimeLimit, 43200);
 		GRBModel model = GRBModel(env);
 		model.getEnv().set(GRB_DoubleParam_MIPGap, 0.0);
 		model.getEnv().set(GRB_IntParam_LazyConstraints, 1);
@@ -490,6 +475,26 @@ vector<long> solveDCNP_thin_formulation_weighted(KGraph &g, long k, long b, vect
 			}
 		}
 
+		cerr << "Adding constraints for length-k i,j-connectors when hop distance = 2" << endl;
+		for (long i = 0; i < g.n; i++)
+		{
+			vector<long> hop_dist_from_i = g.ShortestPathsUnweighted(i);
+			vector<long> dist_from_i = g.ShortestPathsWeighted(i);
+			for (long counter1 = 0; counter1 < g.degree[i]; counter1++)
+			{
+				long u = g.adj[i][counter1];
+				if (dist_from_i[u] <= k)
+				{
+					for (long counter2 = 0; counter2 < g.degree[u]; counter2++)
+					{
+						long j = g.adj[u][counter2];
+						if (j <= i || hop_dist_from_i[j] == 1 || dist_from_i[j] > k) continue;
+						else model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[j] + Y[u] >= 1);
+					}
+				}	
+			}
+		}
+
 
 		cerr << "Adding budget constraints" << endl;
 		GRBLinExpr expr1 = 0;
@@ -502,7 +507,7 @@ vector<long> solveDCNP_thin_formulation_weighted(KGraph &g, long k, long b, vect
 
 
 		cerr << "Adding lazy constraints" << endl;
-		integer_separation_weighted cb = integer_separation_weighted(X, hash_edges, Y, gs, g, k, b);
+		IntegerSeparationWeighted cb = IntegerSeparationWeighted(X, Y, &g, &gs, hash_edges, k, b);
 		model.setCallback(&cb);
 
 
@@ -540,9 +545,9 @@ vector<long> solveDCNP_thin_formulation_weighted(KGraph &g, long k, long b, vect
 
 		long NumOfBandBNodes = (long)model.get(GRB_DoubleAttr_NodeCount);
 		cerr << "# B&B nodes = " << NumOfBandBNodes << endl;
-		cerr << "# callbacks = " << integer_separation_weighted::numCallbacks << endl;
-		cerr << "# Lazy Cuts = " << integer_separation_weighted::numLazyCutsInteger << endl;
-		cerr << "Time spent in callback = " << integer_separation_weighted::TotalCallbackTime << endl;
+		cerr << "# callbacks = " << IntegerSeparationWeighted::numCallbacks << endl;
+		cerr << "# Lazy Cuts = " << IntegerSeparationWeighted::numLazyCutsInteger << endl;
+		cerr << "Time spent in callback = " << IntegerSeparationWeighted::TotalCallbackTime << endl;
 
 
 		for (long i = 0; i < g.n; i++)
@@ -652,9 +657,8 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 
 
 		cerr << "Adding lazy constraints" << endl;
-		fractional_separation cb = fractional_separation(X, hash_edges, Y, gs, g, k, b);
+		FractionalSeparation cb = FractionalSeparation(X, Y, &g, &gs, hash_edges, k, b);
 		model.setCallback(&cb);
-
 
 
 		cerr << "Providing initial solution" << endl;
@@ -688,11 +692,11 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 
 		long NumOfBandBNodes = (long)model.get(GRB_DoubleAttr_NodeCount);
 		cerr << "# B&B nodes = " << NumOfBandBNodes << endl;
-		cerr << "# callbacks = " << fractional_separation::numCallbacks << endl;
-		cerr << "# lazy cuts in integer separation part = " << fractional_separation::numLazyCutsInteger << endl;
-		cerr << "# lazy cuts in fractional separation part = " << fractional_separation::numLazyCutsFractional << endl;
-		cerr << "Time spent in integer part of callback = " << fractional_separation::TotalCallbackTimeInteger << endl;
-		cerr << "Time spent in fractional part of callback = " << fractional_separation::TotalCallbackTimeFractional << endl;
+		cerr << "# callbacks = " << FractionalSeparation::numCallbacks << endl;
+		cerr << "# lazy cuts in integer separation part = " << FractionalSeparation::numLazyCutsInteger << endl;
+		cerr << "# lazy cuts in fractional separation part = " << FractionalSeparation::numLazyCutsFractional << endl;
+		cerr << "Time spent in integer part of callback = " << FractionalSeparation::TotalCallbackTimeInteger << endl;
+		cerr << "Time spent in fractional part of callback = " << FractionalSeparation::TotalCallbackTimeFractional << endl;
 
 
 		for (long i = 0; i < g.n; i++)
@@ -1203,7 +1207,7 @@ long obj(KGraph &g, vector<bool> &nondeleted, long k)
 	return num_close_vertices;
 }
 
-long obj_weighted(KGraph &g, vector<long> deleted, long k)
+long obj_weighted(KGraph &g, vector<long> &deleted, long k)
 {
 	vector<long> close_vertices;
 	long num_close_vertices = 0;
@@ -1304,35 +1308,35 @@ vector<long> FindTopTBetweennessCentralityNodes(KGraph &g, long T)
 //DCNP Heuristic to find distance-based critical nodes
 vector<long> DCNP_Heuristic(KGraph &g, long k, long b)
 {
-	vector<long> D = FindTopTBetweennessCentralityNodes(g, 2 * b); //D contains top 2b betweenness centrality nodes
 	vector<long> D_Star;
-	vector<bool> NonDeleted(g.n, true);
-	long NumOfClosePairs = obj(g, NonDeleted, k);
+	vector<long> D = FindTopTBetweennessCentralityNodes(g, 2 * b); //D contains top 2b betweenness centrality nodes
+	vector<bool> NonDeleted(g.n,true);
+	for (long i = 0; i < D.size(); i++)
+		NonDeleted[D[i]] = false;
 
-	for (long counter = 1; counter <= b + 1; counter++)
+	for (long counter = 0; counter < b; counter++)
 	{
-		D_Star = D;
-		vector<long> close_vertices;
-		vector<bool> current_nondeleted_vertices(g.n, true);
-
-		//Deleting all vertices of set D from graph
-		for (long i = 0; i < D.size(); i++)
-			current_nondeleted_vertices[D[i]] = false;
-
-		for (long j = 0; j < D.size(); j++)
+		long min = LONG_MAX;
+		long argmin = -1;
+		for (long i = 0; i < g.n; i++)
 		{
-			//Adding back the vertices of set D to graph G one by one
-			current_nondeleted_vertices[D[j]] = true;
-			NumOfClosePairs = obj(g, current_nondeleted_vertices, k);
-			close_vertices.push_back(NumOfClosePairs);
-			NumOfClosePairs = 0;
-			current_nondeleted_vertices[D[j]] = false;
+			if (NonDeleted[i]) continue;
+			NonDeleted[i] = true;
+			long TempObj = obj(g, NonDeleted, k);
+			if (TempObj < min)
+			{
+				min = TempObj;
+				argmin = i;
+			}
+			NonDeleted[i] = false;
 		}
-		long min_size = *min_element(close_vertices.begin(), close_vertices.end());
-		for (long i = 0; i < D.size(); i++)
-			if (close_vertices[i] == min_size)
-				D.erase(D.begin() + i);
+		NonDeleted[argmin] = true;
 	}
+	NonDeleted.flip();
+	for (long i = 0; i < g.n; i++)
+		if (NonDeleted[i] == true)
+			D_Star.push_back(i);
+
 	return D_Star;
 }
 
