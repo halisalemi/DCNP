@@ -8,6 +8,7 @@
 #include<climits>
 #include <unordered_map>
 
+
 //Boolify function
 vector<bool> boolify(vector<long> &S, long n);
 vector<bool> boolify(double *y, long n);
@@ -27,7 +28,7 @@ long obj(KGraph &g, vector<long> &deleted, long k);
 long obj(KGraph &g, vector<bool> &nondeleted, long k);
 
 //Calculate number of vertex pairs with distance at most k in graph G-D (obj(G-D)) where G is weighted
-long obj_weighted(KGraph &g, vector<long> deleted, long k);
+long obj_weighted(KGraph &g, vector<long> &deleted, long k);
 
 //Data structure to store variables d(v,s) and p(v,s) for fractional separation
 struct d_and_p
@@ -68,137 +69,115 @@ vector<long> solveDCNP_Veremyev(KGraph &g, long k, long b, vector<long> &Heurist
 
 /*** callback functions for DCNP***/
 
-//Integer separation for unweighted graphs
-class integer_separation : public GRBCallback
+class GeneralCallbackClass : public GRBCallback
 {
+protected:
+	GRBVar* xvars; // x variables
+	double* x; //x values
+	GRBVar* yvars; //y variables
+	double* y; //y values
+	KGraph* g; //original graph
+	KGraph* gs; //power graph pointer
+	long n; //number of nodes of power graph = number of nodes of original graph
+	long gs_m; // number of edges of power graph
+	
 public:
-	GRBVar *vars;
-	GRBVar *vars1;
-	KGraph g1;
-	KGraph g2;
-	long k1;
-	long b1;
-	unordered_map<long, long> hashing;
-	double *y;
-	double *x;
-
-
-	integer_separation(GRBVar *xvars, unordered_map<long, long> hash_edges, GRBVar *yvars, KGraph &gs, KGraph &g, long k, long b)
+	GeneralCallbackClass(GRBVar* grb_x_, GRBVar* grb_y_, KGraph* g_,  KGraph* gs_) : xvars(grb_x_), yvars(grb_y_), g(g_), gs(gs_) 
 	{
-		vars = yvars;
-		vars1 = xvars;
-		g1.Duplicate(gs);
-		g2.Duplicate(g);
-		k1 = k;
-		b1 = b;
-		hashing = hash_edges;
+		n = g->n;
+		gs_m = gs->m;
+		x = new double[gs_m];
+		y = new double[n];
 	}
-	void callback();
-	static long numCallbacks;
-	static double TotalCallbackTime;
-	static long numLazyCutsInteger;
-
-	void populate_y()
+	virtual ~GeneralCallbackClass()
 	{
-		y = new double[g1.n];
-		y = getSolution(vars, g1.n);
+		delete[] x;
+		delete[] y;
 	}
-
-	void populate_x()
+protected:
+	void populate_x_MIPSOL()
 	{
-		x = new double[g1.m];
-		x = getSolution(vars1, g1.m);
+		x = getSolution(xvars, gs_m);
+	}
+	void populate_y_MIPSOL()
+	{
+		y = getSolution(yvars, n);
+	}
+	void populate_x_MIPNODE()
+	{
+		x = getNodeRel(xvars, gs_m);
+	}
+	void populate_y_MIPNODE()
+	{
+		y = getNodeRel(yvars, n);
 	}
 };
 
-//Integer separation for edge-weighted graphs
-class integer_separation_weighted : public GRBCallback
+class IntegerSeparation : public GeneralCallbackClass
 {
-public:
-	GRBVar *vars;
-	GRBVar *vars1;
-	KGraph g1;
-	KGraph g2;
-	long k1;
-	long b1;
+private:
 	unordered_map<long, long> hashing;
+	long k;
+	long b;
 
-	integer_separation_weighted(GRBVar *xvars, unordered_map<long, long> hash_edges, GRBVar *yvars, KGraph &gs, KGraph &g, long k, long b)
-	{
-		vars = yvars;
-		vars1 = xvars;
-		g1.DuplicateForWeighted(gs);
-		g2.DuplicateForWeighted(g);
-		k1 = k;
-		b1 = b;
-		hashing = hash_edges;
-	}
-	void callback();
+public:
 	static long numCallbacks;
 	static double TotalCallbackTime;
 	static long numLazyCutsInteger;
+	IntegerSeparation(GRBVar* grb_x, GRBVar* grb_y, KGraph* g, KGraph* gs, unordered_map<long, long> hash_edges, long k1, long b1) : GeneralCallbackClass(grb_x, grb_y, g, gs)
+	{
+		hashing = hash_edges;
+		k = k1;
+		b = b1;
+	}
+protected:
+	void callback();
 };
 
-
-//Fractional separation for unweighted graphs 
-class fractional_separation : public GRBCallback
+class IntegerSeparationWeighted : public GeneralCallbackClass
 {
-public:
-	GRBVar *vars;
-	GRBVar *vars1;
-	KGraph g1;
-	KGraph g2;
-	long k1;
-	long b1;
+private:
 	unordered_map<long, long> hashing;
-	double *y;
-	double *x;
+	long k;
+	long b;
 
-
-	fractional_separation(GRBVar *xvars, unordered_map<long, long> hash_edges, GRBVar *yvars, KGraph &gs, KGraph &g, long k, long b)
+public:
+	static long numCallbacks;
+	static double TotalCallbackTime;
+	static long numLazyCutsInteger;
+	IntegerSeparationWeighted(GRBVar* grb_x, GRBVar* grb_y, KGraph* g, KGraph* gs, unordered_map<long, long> hash_edges, long k1, long b1) : GeneralCallbackClass(grb_x, grb_y, g, gs)
 	{
-		vars = yvars;
-		vars1 = xvars;
-		//g1 = gs;
-		//g2 = g;
-		g1.Duplicate(gs);
-		g2.Duplicate(g);
-		k1 = k;
-		b1 = b;
 		hashing = hash_edges;
+		k = k1;
+		b = b1;
 	}
+protected:
 	void callback();
+};
+
+class FractionalSeparation : public GeneralCallbackClass
+{	
+private:
+	unordered_map<long, long> hashing;
+	long k;
+	long b;
+
+public: 
 	static long numCallbacks;
 	static double TotalCallbackTimeInteger;
 	static double TotalCallbackTimeFractional;
 	static long numLazyCutsInteger;
 	static long numLazyCutsFractional;
-
-	void populate_y()
+	FractionalSeparation(GRBVar* grb_x, GRBVar* grb_y, KGraph* g, KGraph* gs, unordered_map<long, long> hash_edges, long k1, long b1) : GeneralCallbackClass(grb_x, grb_y, g, gs)
 	{
-		y = new double[g1.n];
-		y = getSolution(vars, g1.n);
+		hashing = hash_edges;
+		k = k1;
+		b = b1;
 	}
-
-	void populate_x()
-	{
-		x = new double[g1.m];
-		x = getSolution(vars1, g1.m);
-	}
-
-	void populate1_y()
-	{
-		y = new double[g1.n];
-		y = getNodeRel(vars, g1.n);
-	}
-	void populate1_x()
-	{
-		x = new double[g1.m];
-		x = getNodeRel(vars1, g1.m);
-	}
+protected:
+void callback();
 
 };
-
 
 
 #endif
