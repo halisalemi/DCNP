@@ -25,7 +25,10 @@ public:
 	long DiameterUnweighted();
 	long DiameterUnweighted(vector<long> S);
 	long DiameterUnweighted(vector<bool> S1);
+	long DiameterWeighted();
+	long DiameterWeighted(vector<long> S);
 	long LongestShortestPathUnweighted(long origin);
+	long LongestShortestPathWeighted(long origin);
 	vector<long> ShortestPathsUnweighted(long origin);
 	vector<long> ShortestPathsUnweighted(long origin, vector<bool> &S);
 	//Added by Ali
