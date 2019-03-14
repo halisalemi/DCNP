@@ -179,6 +179,32 @@ long KGraph::DiameterUnweighted(vector<bool> S1)
 	return DiameterUnweighted(S);
 }
 
+long KGraph::DiameterWeighted()
+{
+	/* Returns the (unweighted) diameter of a connected graph.
+	If the graph is not connected it returns n.
+	Solves a series of shortest paths problems. */
+	vector<long> ShortestPaths = ShortestPathsUnweighted(0); //check to see if the graph is connected
+	for (long i = 0; i<n; i++)
+		if (ShortestPaths[i] == n)
+			return n;
+
+	long diameter = 0, temp_longest;
+	for (long i = 0; i<n; i++)  //solve shortest paths problem, originating from node i
+	{
+		temp_longest = LongestShortestPathWeighted(i);
+		if (temp_longest > diameter)
+			diameter = temp_longest;
+	}
+	return diameter;
+}
+
+long KGraph::DiameterWeighted(vector<long> S)
+{
+	KGraph g = CreateInducedGraph(S);
+	return g.DiameterWeighted();
+}
+
 vector<long> KGraph::ShortestPathsUnweighted(long origin, vector<bool> &S, vector<long> &predecessor)
 {
 	/*Finds the shortest paths from node v to all other nodes in graph G[S].
@@ -251,8 +277,6 @@ vector<long> KGraph::ShortestPathsWeighted(long origin)
 		//Extract the vertex with minimum distance value
 		struct BinaryHeapNode* minHeapNode = extractMin(h);
 		long u = minHeapNode->v; // Store the extracted vertex number
-
-		//cerr << "u = " << u << endl;
 		visited[u] = true;
 
 		/*Traverse through all adjacent vertices of u (the extracted
@@ -260,7 +284,6 @@ vector<long> KGraph::ShortestPathsWeighted(long origin)
 		for (long i = 0; i < degree[u]; i++)
 		{
 			long v = adj[u][i];
-			//cerr << "v = " << v << endl;
 
 			if (!visited[v] && dist[u] + weight[u][i] < dist[v])
 			{
@@ -314,7 +337,6 @@ vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S)
 
 		if (!S[u]) continue;
 
-		//cerr << "u = " << u << endl;
 		visited[u] = true;
 
 		/*Traverse through all adjacent vertices of u (the extracted
@@ -322,7 +344,6 @@ vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S)
 		for (long i = 0; i < degree[u]; i++)
 		{
 			long v = adj[u][i];
-			//cerr << "v = " << v << endl;
 
 			if (S[v] && !visited[v] && dist[u] + weight[u][i] < dist[v])
 			{
@@ -377,7 +398,6 @@ vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S, vector<
 
 		if (!S[u]) continue;
 
-		//cerr << "u = " << u << endl;
 		visited[u] = true;
 
 		/*Traverse through all adjacent vertices of u (the extracted
@@ -385,7 +405,6 @@ vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S, vector<
 		for (long i = 0; i < degree[u]; i++)
 		{
 			long v = adj[u][i];
-			//cerr << "v = " << v << endl;
 
 			if (S[v] && !visited[v] && dist[u] + weight[u][i] < dist[v])
 			{
@@ -395,7 +414,6 @@ vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S, vector<
 			}
 		}
 	}
-
 	Predecessor = pre;
 	return dist;
 }
@@ -527,6 +545,12 @@ vector<long> KGraph::ShortestPathsUnweighted(long origin, vector<bool> &S)
 long KGraph::LongestShortestPathUnweighted(long origin)
 {
 	vector<long> SP = ShortestPathsUnweighted(origin);
+	return (long)*max_element(SP.begin(), SP.end());
+}
+
+long KGraph::LongestShortestPathWeighted(long origin)
+{
+	vector<long> SP = ShortestPathsWeighted(origin);
 	return (long)*max_element(SP.begin(), SP.end());
 }
 
@@ -1843,7 +1867,10 @@ void KGraph::ReadSNAPGraph(string file)
 	cerr << m << " edges read\n";
 }
 
-/* Reads a weighted graph from a file.*/
+/* Reads a weighted graph from a file.
+It assumes that there are no duplicates
+and the vertices of an edge are sorted
+like 1 2 rather than 2 1 */
 void KGraph::ReadWeightedGraph(string file)
 {
 	cerr << "ReadWeightedGraph ";
@@ -1872,7 +1899,7 @@ void KGraph::ReadWeightedGraph(string file)
 
 	weight = new vector<double>[n];
 	long mcopy = m;
-	long ncopy=n;
+	long ncopy = n;
 
 	for (long i = 0; i<m; i++)
 	{
@@ -1888,8 +1915,6 @@ void KGraph::ReadWeightedGraph(string file)
 	m = 0;
 	for (long i = 0; i<n; i++)
 	{
-		sort(adj[i].begin(), adj[i].end());
-		adj[i].erase(unique(adj[i].begin(), adj[i].end()), adj[i].end());
 		degree[i] = adj[i].size();
 		m += degree[i];
 		Delta = max(degree[i], Delta);
@@ -1897,38 +1922,6 @@ void KGraph::ReadWeightedGraph(string file)
 		{
 			cerr << "Error in ReadDirectedGraphFromFile\n";
 			exit(0);
-		}
-	}
-	cerr << "Wait till " << n / 1000 << " dots: " << endl;
-	for (long i = 0; i < n; i++)
-	{
-		if ((i + 2) % 1000 == 0)
-			cerr << ".";
-
-		weight[i].resize(degree[i]);
-		for (long counter = 0; counter < degree[i]; counter++)
-		{
-			string temp1;
-			long u1, v1, w1;
-			ifstream input1;
-			char* t1 = "";
-			input1.open(file.c_str(), ios::in);
-			input1 >> ncopy >> temp1 >> mcopy >> temp1;
-			long j = adj[i][counter];
-			for (long q = 0; q < mcopy; q++) //now find i and j in input file
-			{
-				input1 >> u1 >> v1 >> w1;
-				if (u1 == i && v1 == j)
-				{
-					weight[i][counter] = w1;
-					break;
-				}
-				if (v1 == i && u1 == j)
-				{
-					weight[i][counter] = w1;
-					break;
-				}
-			}
 		}
 	}
 	m = m / 2;
