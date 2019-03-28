@@ -1188,7 +1188,6 @@ long obj(KGraph &g, vector<long> &deleted, long k)
 		vector <long> dist_from_v = g.ShortestPathsUnweighted(v, new_nodes);
 		for (long w = v + 1; w < g.n; w++)
 		{
-			cerr << "w = " << w << endl;
 			if (new_nodes[w] && dist_from_v[w] <= k)
 				num_close_vertices++;
 		}
