@@ -21,7 +21,8 @@ int main(int argc, char *argv[])
 	//change the precision for outputting the running time. It is rounded to 2 decimal places.
 	cout.setf(ios::fixed);
 	cout.precision(2);
-
+	cerr.setf(ios::fixed);
+	cerr.precision(2);
 
 
 	time_t start_time = clock();
@@ -57,6 +58,22 @@ int main(int argc, char *argv[])
 		for (long i = 0; i < Heuristic_sol.size(); i++) cerr << Heuristic_sol[i] << " ";
 		cerr << endl;
 		cerr << "Heuristic solution = " << obj(g, Heuristic_sol, k) << endl;
+	}
+
+	else if (strcmp(argv[1], "DCNPHeuristicWeighted") == 0)
+	{
+		KGraph g(argv[3], argv[3], argv[2]);
+
+		long k = atol(argv[4]); //short distance
+		long b = atol(argv[5]); //budget 
+		time_t start = clock();
+		time_t Heuristic_start = clock();
+		vector<long> Heuristic_sol = DCNP_Heuristic_Weighted(g, k, b);
+		cout << "Heuristic time = " << (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC << endl;
+		cerr << "Nodes chosen by heuristic = ";
+		for (long i = 0; i < Heuristic_sol.size(); i++) cerr << Heuristic_sol[i] << " ";
+		cerr << endl;
+		cerr << "Heuristic solution = " << obj_weighted(g, Heuristic_sol, k) << endl;
 	}
 
 
@@ -96,9 +113,9 @@ int main(int argc, char *argv[])
 		time_t start = clock();
 		cerr << "Finding heuristic solution" << endl;
 		time_t Heuristic_start = clock();
-		vector<long> Heuristic_sol = DCNP_Heuristic(g, k, b);
+		vector<long> Heuristic_sol = DCNP_Heuristic_Weighted(g, k, b);
 		double Heuristic_time = (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC;
-		cerr << "Heuristic time = " << Heuristic_time << endl;
+		cout << "Heuristic time = " << Heuristic_time << endl;
 		
 		vector<long> criticalNodes = solveDCNP_thin_formulation_weighted(g, k, b, Heuristic_sol);
 
@@ -106,6 +123,7 @@ int main(int argc, char *argv[])
 		cerr << "# critical nodes = " << criticalNodes.size() << endl;
 		cerr << "** Label of critical node(s) = ";
 		PrintVectorLong(criticalNodes);
+		cerr << "# close vertex pairs in G-D = " << obj_weighted(g, criticalNodes, k) << endl;
 	}
 
 
@@ -121,8 +139,9 @@ int main(int argc, char *argv[])
 
 		time_t Heuristic_start = clock();
 		vector<long> Heuristic_sol = DCNP_Heuristic(g, k, b);
+		//vector<long> Heuristic_sol;
 		double Heuristic_time = (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC;
-		cerr << "Heuristic time = " << Heuristic_time << endl;
+		cout << "Heuristic time = " << Heuristic_time << endl;
 		
 
 		vector<long> criticalNodes = solveDCNP_thin_formulation_fractional(g, k, b, Heuristic_sol);
