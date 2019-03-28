@@ -479,16 +479,15 @@ vector<long> solveDCNP_thin_formulation_weighted(KGraph &g, long k, long b, vect
 		for (long i = 0; i < g.n; i++)
 		{
 			vector<long> hop_dist_from_i = g.ShortestPathsUnweighted(i);
-			vector<long> dist_from_i = g.ShortestPathsWeighted(i);
 			for (long counter1 = 0; counter1 < g.degree[i]; counter1++)
 			{
 				long u = g.adj[i][counter1];
-				if (dist_from_i[u] <= k)
+				if (g.weight[i][counter1] <= k) 
 				{
 					for (long counter2 = 0; counter2 < g.degree[u]; counter2++)
 					{
 						long j = g.adj[u][counter2];
-						if (j <= i || hop_dist_from_i[j] == 1 || dist_from_i[j] > k) continue;
+						if (j <= i || hop_dist_from_i[j] == 1 || g.weight[i][counter1] + g.weight[u][counter2] > k) continue;
 						else model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[j] + Y[u] >= 1);
 					}
 				}	
@@ -1188,8 +1187,12 @@ long obj(KGraph &g, vector<long> &deleted, long k)
 	{
 		vector <long> dist_from_v = g.ShortestPathsUnweighted(v, new_nodes);
 		for (long w = v + 1; w < g.n; w++)
-			if (dist_from_v[w] <= k)
+		{
+			cerr << "w = " << w << endl;
+			if (new_nodes[w] && dist_from_v[w] <= k)
 				num_close_vertices++;
+		}
+			
 	}
 	return num_close_vertices;
 }
@@ -1201,7 +1204,7 @@ long obj(KGraph &g, vector<bool> &nondeleted, long k)
 	{
 		vector <long> dist_from_v = g.ShortestPathsUnweighted(v, nondeleted);
 		for (long w = v + 1; w < g.n; w++)
-			if (dist_from_v[w] <= k)
+			if (nondeleted[w] && dist_from_v[w] <= k)
 				num_close_vertices++;
 	}
 	return num_close_vertices;
@@ -1221,7 +1224,20 @@ long obj_weighted(KGraph &g, vector<long> &deleted, long k)
 	{
 		vector <long> dist_from_v = g.ShortestPathsWeighted(v, new_nodes);
 		for (long w = v + 1; w < g.n; w++)
-			if (dist_from_v[w] <= k)
+			if (new_nodes[w] && dist_from_v[w] <= k)
+				num_close_vertices++;
+	}
+	return num_close_vertices;
+}
+
+long obj_weighted(KGraph &g, vector<bool> &nondeleted, long k)
+{
+	long num_close_vertices = 0;
+	for (long v = 0; v < g.n; v++)
+	{
+		vector <long> dist_from_v = g.ShortestPathsWeighted(v, nondeleted);
+		for (long w = v + 1; w < g.n; w++)
+			if (nondeleted[w] && dist_from_v[w] <= k)
 				num_close_vertices++;
 	}
 	return num_close_vertices;
@@ -1304,6 +1320,76 @@ vector<long> FindTopTBetweennessCentralityNodes(KGraph &g, long T)
 	return TopT_BC;
 }
 
+vector<long> FindTopTBetweennessCentralityNodesWeighted(KGraph &g, long T, long k)
+{
+	vector<double> C_B(g.n, 0);
+	vector<long> d;
+	for (long s = 0; s < g.n; s++)
+	{
+		vector<bool> visited(g.n, false);
+		d = g.ShortestPathsWeighted(s);
+		stack<int> Stack;
+		vector< vector<long> > P(g.n);
+		vector<double> sigma(g.n, 0); //sigma[t] = number of shortest paths from s (source) to t
+		sigma[s] = 1;
+		vector<long> Q; //A queue
+		Q.push_back(s);
+
+		while (!Q.empty())
+		{
+			long v = Q[0];
+			Q.erase(Q.begin());
+			if (!visited[v] && d[v] <= k)
+			{
+				Stack.push(v);
+				visited[v] = true;
+				for (long i = 0; i < g.degree[v]; i++)
+				{
+					long w = g.adj[v][i];
+					if (d[w] == d[v] + g.weight[v][i])
+					{
+						sigma[w] = sigma[w] + sigma[v];
+						P[w].push_back(v);
+						Q.push_back(w);
+					}
+				}
+			}	
+		}
+		vector<double> delta(g.n, 0.0);
+
+		//Stack returns vertices in order of non-increasing distance from s
+		while (!Stack.empty())
+		{
+			long w = Stack.top();
+			Stack.pop();
+
+			for (long j = 0; j < P[w].size(); j++)
+			{
+				long v = P[w][j];
+				delta[v] = double(delta[v] + double((sigma[v] / sigma[w]))*(1 + delta[w]));
+			}
+
+			if (w != s)
+				C_B[w] = C_B[w] + delta[w];
+		}
+	}
+
+	//Find top T betweenness centrality nodes
+	vector<long> TopT_BC;
+	priority_queue<pair<double, long>> q;
+	for (long i = 0; i < C_B.size(); i++)
+		q.push(pair<double, long>(C_B[i], i));
+
+	for (long i = 0; i < T; i++)
+	{
+		long index = q.top().second;
+		TopT_BC.push_back(index);
+		q.pop();
+	}
+
+	return TopT_BC;
+}
+
 
 //DCNP Heuristic to find distance-based critical nodes
 vector<long> DCNP_Heuristic(KGraph &g, long k, long b)
@@ -1323,6 +1409,40 @@ vector<long> DCNP_Heuristic(KGraph &g, long k, long b)
 			if (NonDeleted[i]) continue;
 			NonDeleted[i] = true;
 			long TempObj = obj(g, NonDeleted, k);
+			if (TempObj < min)
+			{
+				min = TempObj;
+				argmin = i;
+			}
+			NonDeleted[i] = false;
+		}
+		NonDeleted[argmin] = true;
+	}
+	NonDeleted.flip();
+	for (long i = 0; i < g.n; i++)
+		if (NonDeleted[i] == true)
+			D_Star.push_back(i);
+
+	return D_Star;
+}
+
+vector<long> DCNP_Heuristic_Weighted(KGraph &g, long k, long b)
+{
+	vector<long> D_Star;
+	vector<long> D = FindTopTBetweennessCentralityNodesWeighted(g, 2 * b, k); //D contains top 2b betweenness centrality nodes
+	vector<bool> NonDeleted(g.n, true);
+	for (long i = 0; i < D.size(); i++)
+		NonDeleted[D[i]] = false;
+
+	for (long counter = 0; counter < b; counter++)
+	{
+		long min = LONG_MAX;
+		long argmin = -1;
+		for (long i = 0; i < g.n; i++)
+		{
+			if (NonDeleted[i]) continue;
+			else NonDeleted[i] = true;
+			long TempObj = obj_weighted(g, NonDeleted, k);
 			if (TempObj < min)
 			{
 				min = TempObj;
@@ -1375,4 +1495,5 @@ d_and_p d_and_p_function(KGraph &goriginal, KGraph &gpower, long i, long k, doub
 	d_and_p result = { d,p };
 	return result;
 }
+
 
