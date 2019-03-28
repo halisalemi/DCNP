@@ -8,7 +8,6 @@
 #include<climits>
 #include <unordered_map>
 
-
 //Boolify function
 vector<bool> boolify(vector<long> &S, long n);
 vector<bool> boolify(double *y, long n);
@@ -29,6 +28,7 @@ long obj(KGraph &g, vector<bool> &nondeleted, long k);
 
 //Calculate number of vertex pairs with distance at most k in graph G-D (obj(G-D)) where G is weighted
 long obj_weighted(KGraph &g, vector<long> &deleted, long k);
+long obj_weighted(KGraph &g, vector<bool> &nondeleted, long k);
 
 //Data structure to store variables d(v,s) and p(v,s) for fractional separation
 struct d_and_p
@@ -43,8 +43,14 @@ d_and_p d_and_p_function(KGraph &goriginal, KGraph &gpower, long i, long k, doub
 //Betweenneess Centrality function
 vector<long> FindTopTBetweennessCentralityNodes(KGraph &g, long T);
 
+//Betweenneess Centrality function for weighted graphs
+vector<long> FindTopTBetweennessCentralityNodesWeighted(KGraph &g, long T, long k);
+
 //DCNP Heuristic to find distance-based critical nodes
 vector<long> DCNP_Heuristic(KGraph &g, long s, long B);
+
+//DCNP Heuristic to find distance-based critical nodes in weighted graphs
+vector<long> DCNP_Heuristic_Weighted(KGraph &g, long s, long B);
 
 /*To solve DCNP when distances are measured in terms of hops
 * Thin formulation with integer separation is used. */
