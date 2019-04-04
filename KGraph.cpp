@@ -245,7 +245,13 @@ vector<long> KGraph::ShortestPathsUnweighted(long origin, vector<bool> &S, vecto
 
 vector<long> KGraph::ShortestPathsWeighted(long origin)
 {
-	vector<long> dist(n);
+	long tempmax = 0;
+	for (long i = 0; i < n; i++)
+		if (*max_element(weight[i].begin(), weight[i].end()) > tempmax)
+			tempmax = *max_element(weight[i].begin(), weight[i].end());
+	long max = tempmax;
+	long M = max*n;
+	vector<long> dist(n,M);
 	vector<long> pre(n);
 	vector<bool> visited(n, false);
 
@@ -255,7 +261,6 @@ vector<long> KGraph::ShortestPathsWeighted(long origin)
 	//Initialize heap h with all vertices.
 	for (long v = 0; v < n; v++)
 	{
-		dist[v] = INT_MAX;
 		h->array[v] = newMinHeapNode(v, dist[v]);
 		h->pos[v] = v;
 	}
@@ -287,7 +292,7 @@ vector<long> KGraph::ShortestPathsWeighted(long origin)
 
 			if (!visited[v] && dist[u] + weight[u][i] < dist[v])
 			{
-				dist[v] = dist[u] + weight[u][i];
+				dist[v] = dist[u] + (long)weight[u][i];
 				pre[v] = u;
 				decreaseKey(h, v, dist[v]);
 			}
@@ -298,7 +303,13 @@ vector<long> KGraph::ShortestPathsWeighted(long origin)
 
 vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S)
 {
-	vector<long> dist(n,INT_MAX);
+	long tempmax = 0;
+	for (long i = 0 ; i < n; i++)
+		if (*max_element(weight[i].begin(), weight[i].end()) > tempmax)
+			tempmax = *max_element(weight[i].begin(), weight[i].end());
+	long max = tempmax;
+	long M = max*n;
+	vector<long> dist(n, M);
 	vector<long> pre(n);
 	vector<bool> visited(n, false);
 
@@ -311,7 +322,6 @@ vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S)
 	//Initialize heap h with all vertices.
 	for (long v = 0; v < n; v++)
 	{
-		dist[v] = INT_MAX;
 		h->array[v] = newMinHeapNode(v, dist[v]);
 		h->pos[v] = v;
 	}
@@ -344,7 +354,6 @@ vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S)
 		for (long i = 0; i < degree[u]; i++)
 		{
 			long v = adj[u][i];
-
 			if (S[v] && !visited[v] && dist[u] + weight[u][i] < dist[v])
 			{
 				dist[v] = dist[u] + weight[u][i];
@@ -359,7 +368,13 @@ vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S)
 
 vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S, vector<long> &Predecessor)
 {
-	vector<long> dist(n, INT_MAX);
+	long tempmax = 0;
+	for (long i = 0; i < n; i++)
+		if (*max_element(weight[i].begin(), weight[i].end()) > tempmax)
+			tempmax = *max_element(weight[i].begin(), weight[i].end());
+	long max = tempmax;
+	long M = max*n;
+	vector<long> dist(n, M);
 	vector<long> pre(n);
 	vector<bool> visited(n, false);
 
@@ -372,7 +387,6 @@ vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S, vector<
 	//Initialize heap h with all vertices.
 	for (long v = 0; v < n; v++)
 	{
-		dist[v] = INT_MAX;
 		h->array[v] = newMinHeapNode(v, dist[v]);
 		h->pos[v] = v;
 	}
@@ -471,7 +485,7 @@ vector<long> KGraph::BinaryHeapDijkstra(long origin, long sink, vector<bool> &S)
 
 			if (S[v] && !visited[v] && dist[u] + weight[u][i] < dist[v])
 			{
-				dist[v] = dist[u] + weight[u][i];
+				dist[v] = dist[u] + (long)weight[u][i];
 				pre[v] = u;
 				decreaseKey(h, v, dist[v]);
 			}
@@ -479,18 +493,6 @@ vector<long> KGraph::BinaryHeapDijkstra(long origin, long sink, vector<bool> &S)
 	}
 	vector<long> path;
 	vector<long> empty;
-
-	/*for (long i = 0; i < pre.size(); i++)
-	{
-		cerr << pre[i] << endl;
-	}*/
-
-	
-	/*cerr << "Shortest path from vertex " << origin << " to vertex " << sink << " includes vertices: " << endl;
-	for (long i = 0; i < path.size(); i++)
-	{
-		cerr << path[i] << " ";
-	}*/
 
 	long target = sink;
 	path.push_back(target);
@@ -501,7 +503,6 @@ vector<long> KGraph::BinaryHeapDijkstra(long origin, long sink, vector<bool> &S)
 	}
 
 	return path;
-
 
 }
 
@@ -1889,15 +1890,12 @@ void KGraph::ReadWeightedGraph(string file)
 		exit(-1);
 	}
 	input >> n >> temp >> m >> temp;
-
-
 	cerr << n << " nodes, " << m << " edges suggested. ";
 
 	adj = new vector<long>[n];
 	degree = new long[n];
 	memset(degree, 0, n * sizeof(int));
-
-	weight = new vector<double>[n];
+	weight = new vector<long>[n];
 	long mcopy = m;
 	long ncopy = n;
 
@@ -1920,7 +1918,7 @@ void KGraph::ReadWeightedGraph(string file)
 		Delta = max(degree[i], Delta);
 		if (adj[i].size() != degree[i])
 		{
-			cerr << "Error in ReadDirectedGraphFromFile\n";
+			cerr << "Error in ReadWeightedGraph\n";
 			exit(0);
 		}
 	}
