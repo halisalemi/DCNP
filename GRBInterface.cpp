@@ -1175,25 +1175,9 @@ vector<long> FindNonCriticalNodes(KGraph &g)
 //Calculate number of vertex pairs with distance at most k in graph G-D (obj(G-D))
 long obj(KGraph &g, vector<long> &deleted, long k)
 {
-	vector<long> close_vertices;
-	long num_close_vertices = 0;
-
-	vector<bool> new_nodes(g.n, true);
-
-	for (long i = 0; i < deleted.size(); i++)
-		new_nodes[deleted[i]] = false;
-
-	for (long v = 0; v < g.n; v++)
-	{
-		vector <long> dist_from_v = g.ShortestPathsUnweighted(v, new_nodes);
-		for (long w = v + 1; w < g.n; w++)
-		{
-			if (new_nodes[w] && dist_from_v[w] <= k)
-				num_close_vertices++;
-		}
-			
-	}
-	return num_close_vertices;
+	vector<bool> nondeleted(g.n, true);
+	for (long i = 0; i < deleted.size(); i++) nondeleted[deleted[i]] = false;
+	return obj(g,nondeleted,k);
 }
 
 long obj(KGraph &g, vector<bool> &nondeleted, long k)
@@ -1211,22 +1195,9 @@ long obj(KGraph &g, vector<bool> &nondeleted, long k)
 
 long obj_weighted(KGraph &g, vector<long> &deleted, long k)
 {
-	vector<long> close_vertices;
-	long num_close_vertices = 0;
-
-	vector<bool> new_nodes(g.n, true);
-
-	for (long i = 0; i < deleted.size(); i++)
-		new_nodes[deleted[i]] = false;
-
-	for (long v = 0; v < g.n; v++)
-	{
-		vector <long> dist_from_v = g.ShortestPathsWeighted(v, new_nodes);
-		for (long w = v + 1; w < g.n; w++)
-			if (new_nodes[w] && dist_from_v[w] <= k)
-				num_close_vertices++;
-	}
-	return num_close_vertices;
+	vector<bool> nondeleted(g.n, true);
+	for (long i = 0; i < deleted.size(); i++) nondeleted[deleted[i]] = false;
+	return obj_weighted(g,nondeleted,k);
 }
 
 long obj_weighted(KGraph &g, vector<bool> &nondeleted, long k)
