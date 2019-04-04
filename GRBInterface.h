@@ -34,7 +34,7 @@ long obj_weighted(KGraph &g, vector<bool> &nondeleted, long k);
 struct d_and_p
 {
 	vector < vector<double> > d;
-	vector< vector<double> > p;
+	vector< vector<long> > p;
 };
 //Function to calculate variables d(v,s) and p(v,s) for fractional separation
 d_and_p d_and_p_function(KGraph &goriginal, KGraph &gpower, long i, long k, double *y);
