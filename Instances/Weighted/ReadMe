@@ -1,0 +1,14 @@
+The instances are drawn from a Transportation Networks, a networks repository for transportation research (https://github.com/bstabler/TransportationNetworks)
+
+The following changes are applied to these graphs.
+ 
+1. The vertices start with label 0 rather than 1.
+
+2. If a graph has an isolated vertex, then it is removed and vertices are relabeled. 
+
+3. In each graph, if the weights (distances) are not integer, then all of them are multiplied by a sufficient large number to become integer. 
+   For example, if the weights have 2 decimals, they are multiplied by 100. 
+
+4.  All edges {i,j} are sorted as i then j when i<j.
+ 
+5.  Adjacency list is sorted. 
