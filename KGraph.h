@@ -43,19 +43,14 @@ public:
 	void ComplementGraph(const KGraph &rhs);
 
 	vector<long> *adj;  // stores the adj lists. Each list is maintained as a sorted vector.
-
-
-	vector<double> *weight; // stores the edge weight.
-
-
+	vector<long> *weight; // stores the edge weight.
 	long *degree;       // stores the degree seq
-	double *wt;
 	long n;             // num of nodes
 	long m;             // num of edges
 	long Delta;         // higest degree. As of now, is instanciated when graph is read or copied, not maintained afterwards
 	string name;        // name of the graph. Could be anything.
 	
-
+	
 						/* Constructors */
 	KGraph();
 	KGraph(string nm);
