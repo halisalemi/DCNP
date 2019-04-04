@@ -379,8 +379,8 @@ vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> 
 		cerr << "Optimizing" << endl;
 		model.optimize();
 
-		long bestUB = model.get(GRB_DoubleAttr_ObjVal);
-		long bestLB = model.get(GRB_DoubleAttr_ObjBound);
+		double bestUB = model.get(GRB_DoubleAttr_ObjVal);
+		double bestLB = model.get(GRB_DoubleAttr_ObjBound);
 		cout << "bestLB = " << bestLB << ", bestUB = " << bestUB << endl;
 
 		long NumOfBandBNodes = (long)model.get(GRB_DoubleAttr_NodeCount);
@@ -538,8 +538,8 @@ vector<long> solveDCNP_thin_formulation_weighted(KGraph &g, long k, long b, vect
 		cerr << "Optimizing" << endl;
 		model.optimize();
 
-		long bestUB = model.get(GRB_DoubleAttr_ObjVal);
-		long bestLB = model.get(GRB_DoubleAttr_ObjBound);
+		double bestUB = model.get(GRB_DoubleAttr_ObjVal);
+		double bestLB = model.get(GRB_DoubleAttr_ObjBound);
 		cout << "bestLB = " << bestLB << ", bestUB = " << bestUB << endl;
 
 		long NumOfBandBNodes = (long)model.get(GRB_DoubleAttr_NodeCount);
@@ -685,8 +685,8 @@ vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, ve
 		model.optimize();
 
 
-		long bestUB = model.get(GRB_DoubleAttr_ObjVal);
-		long bestLB = model.get(GRB_DoubleAttr_ObjBound);
+		double bestUB = model.get(GRB_DoubleAttr_ObjVal);
+		double bestLB = model.get(GRB_DoubleAttr_ObjBound);
 		cout << "bestLB = " << bestLB << ", bestUB = " << bestUB << endl;
 
 		long NumOfBandBNodes = (long)model.get(GRB_DoubleAttr_NodeCount);
@@ -891,8 +891,8 @@ vector<long> solveDCNP_path_like_k3(KGraph &g, long b, vector<long> &Heuristic_s
 		cerr << "Optimizing" << endl;
 		model.optimize();
 
-		long bestUB = model.get(GRB_DoubleAttr_ObjVal);
-		long bestLB = model.get(GRB_DoubleAttr_ObjBound);
+		double bestUB = model.get(GRB_DoubleAttr_ObjVal);
+		double bestLB = model.get(GRB_DoubleAttr_ObjBound);
 		cout << "bestLB = " << bestLB << ", bestUB = " << bestUB << endl;
 
 
@@ -1100,8 +1100,8 @@ vector<long> solveDCNP_Veremyev(KGraph &g, long k, long b, vector<long> &Heurist
 		cerr << "Optimizing" << endl;
 		model.optimize();
 
-		long bestUB = model.get(GRB_DoubleAttr_ObjVal);
-		long bestLB = model.get(GRB_DoubleAttr_ObjBound);
+		double bestUB = model.get(GRB_DoubleAttr_ObjVal);
+		double bestLB = model.get(GRB_DoubleAttr_ObjBound);
 		//cout << "bestLB = " << bestLB << ", bestUB = " << bestUB << endl;
 		cout << bestLB << " " << bestUB;
 
@@ -1463,11 +1463,11 @@ vector<long> DCNP_Heuristic_Weighted(KGraph &g, long k, long b)
 //Function to calculate variables d(v,s) and p(v,s) for fractional separation
 d_and_p d_and_p_function(KGraph &goriginal, KGraph &gpower, long i, long k, double* y)
 {
-	double infty = numeric_limits<double>::max();
+	long infty = numeric_limits<long>::max();
 	vector<double> temp1(k + 1, infty);
-	vector<double> temp2(k + 1, infty);
+	vector<long> temp2(k + 1, infty);
 	vector < vector<double> > d(goriginal.n, temp1);
-	vector< vector<double> > p(goriginal.n, temp2);
+	vector< vector<long> > p(goriginal.n, temp2);
 
 	for (long s = 0; s <= k; s++)
 	{
