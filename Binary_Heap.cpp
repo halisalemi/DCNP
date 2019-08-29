@@ -23,6 +23,7 @@ struct BinaryHeapNode* newMinHeapNode(long v, long dist)
 }
 
 
+
 struct BinaryHeap* createMinHeap(long capacity)
 {
 	struct BinaryHeap* minHeap =
@@ -34,6 +35,7 @@ struct BinaryHeap* createMinHeap(long capacity)
 		(struct BinaryHeapNode**) malloc(capacity * sizeof(struct BinaryHeapNode*));
 	return minHeap;
 }
+
 
 
 void swapMinHeapNode(struct BinaryHeapNode** a, struct BinaryHeapNode** b)
