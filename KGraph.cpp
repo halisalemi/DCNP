@@ -319,6 +319,8 @@ vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S)
 	//h is our heap
 	struct BinaryHeap* h = createMinHeap(n);
 
+
+
 	//Initialize heap h with all vertices.
 	for (long v = 0; v < n; v++)
 	{
@@ -333,6 +335,7 @@ vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S)
 	decreaseKey(h, origin, dist[origin]);
 	pre[origin] = origin;
 
+
 	// Initially size of min heap is equal to n
 	h->size = n;
 
@@ -343,8 +346,8 @@ vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S)
 		//Extract the vertex with minimum distance value
 		struct BinaryHeapNode* minHeapNode = extractMin(h);
 
-		long u = minHeapNode->v; // Store the extracted vertex number
-
+		long u = minHeapNode->v; // Store the extracted vertex number		
+		free(minHeapNode);
 		if (!S[u]) continue;
 
 		visited[u] = true;
@@ -356,13 +359,14 @@ vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S)
 			long v = adj[u][i];
 			if (S[v] && !visited[v] && dist[u] + weight[u][i] < dist[v])
 			{
-				dist[v] = dist[u] + weight[u][i];
+				dist[v] = dist[u] + (long)weight[u][i];
 				pre[v] = u;
 				decreaseKey(h, v, dist[v]);
 			}
 		}
 	}
-
+	free(h->array); //deallocating a block of memory allocated by a call to malloc
+	free(h->pos); //deallocating a block of memory allocated by a call to malloc
 	return dist;
 }
 
@@ -375,7 +379,7 @@ vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S, vector<
 	long max = tempmax;
 	long M = max*n;
 	vector<long> dist(n, M);
-	vector<long> pre(n);
+	vector<long> pre(n,-1);
 	vector<bool> visited(n, false);
 
 	//if origin not in S, return infinities.
@@ -384,37 +388,37 @@ vector<long> KGraph::ShortestPathsWeighted(long origin, vector<bool> &S, vector<
 	//h is our heap
 	struct BinaryHeap* h = createMinHeap(n);
 
-	//Initialize heap h with all vertices.
+	//initialize heap h with all vertices.
 	for (long v = 0; v < n; v++)
 	{
 		h->array[v] = newMinHeapNode(v, dist[v]);
 		h->pos[v] = v;
 	}
 
-	// Make dist value of origin vertex as 0 so that it is extracted first
+	//make dist value of origin vertex as 0 so that it is extracted first
 	h->array[origin] = newMinHeapNode(origin, dist[origin]);
 	h->pos[origin] = origin;
 	dist[origin] = 0;
 	decreaseKey(h, origin, dist[origin]);
 	pre[origin] = origin;
 
-	// Initially size of min heap is equal to n
+	//initially size of min heap is equal to n
 	h->size = n;
 
-	/*In the following loop, min heap contains all nodes
+	/*in the following loop, min heap contains all nodes
 	/whose shortest distance is not yet finalized.*/
 	for (long counter = 0; counter < n; counter++)
 	{
-		//Extract the vertex with minimum distance value
+		//extract the vertex with minimum distance value
 		struct BinaryHeapNode* minHeapNode = extractMin(h);
 
-		long u = minHeapNode->v; // Store the extracted vertex number
+		long u = minHeapNode->v; //store the extracted vertex number
 
 		if (!S[u]) continue;
 
 		visited[u] = true;
 
-		/*Traverse through all adjacent vertices of u (the extracted
+		/*traverse through all adjacent vertices of u (the extracted
 		vertex) and update their distance values*/
 		for (long i = 0; i < degree[u]; i++)
 		{
@@ -1904,6 +1908,11 @@ void KGraph::ReadWeightedGraph(string file)
 		input >> u >> v >> w;
 		if (u == v)
 			continue;
+		if (u > v)
+		{
+			cerr << "Error: All edges (i,j) are NOT sorted as i then j when i < j." << endl;
+			exit(0);
+		}
 		adj[u].push_back(v);
 		adj[v].push_back(u);
 		weight[u].push_back(w);
@@ -1923,6 +1932,17 @@ void KGraph::ReadWeightedGraph(string file)
 		}
 	}
 	m = m / 2;
+	for (long i = 0; i < n; i++)
+	{
+		for (long counter = 0; counter < adj[i].size(); counter++)
+		{
+			if (!is_sorted(adj[i].begin(), adj[i].end()))
+			{
+				cerr << "Error: Adj list is not sorted!" << endl;
+				exit(0);
+			}
+		}
+	}
 	cerr << m << " edges read\n";
 }
 
