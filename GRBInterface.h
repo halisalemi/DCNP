@@ -54,23 +54,23 @@ vector<long> DCNP_Heuristic_Weighted(KGraph &g, long s, long B);
 
 /*To solve DCNP when distances are measured in terms of hops
 * Thin formulation with integer separation is used. */
-vector<long> solveDCNP_thin_formulation(KGraph &g, long k, long b, vector<long> &Heuristic_sol);
-
-/*To solve DCNP in edge-weighted graphs.
-* Thin formulation with integer separation is used.*/
-vector<long> solveDCNP_thin_formulation_weighted(KGraph &g, long k, long b, vector<long> &Heuristic_sol);
+vector<long> Thin_I(KGraph &g, long k, long b, vector<long> &Heuristic_sol, bool &subopt);
 
 /*To solve DCNP when distances are measured in terms of hops
 * Thin formulation with fractional separation is used. */
-vector<long> solveDCNP_thin_formulation_fractional(KGraph &g, long k, long b, vector<long> &Heuristic_sol);
+vector<long> Thin_F(KGraph &g, long k, long b, vector<long> &Heuristic_sol, bool &subopt);
 
 /*To solve DCNP when distances are measured in terms of hops and k=3
 * Path-like formulation is used */
-vector<long> solveDCNP_path_like_k3(KGraph &g, long b, vector<long> &Heuristic_sol);
+vector<long> Path_like_k3(KGraph &g, long b, vector<long> &Heuristic_sol, bool &subopt);
 
 /*To solve DCNP when distances are measured in terms of hops
 * Recursive formulation is used. */
-vector<long> solveDCNP_Veremyev(KGraph &g, long k, long b, vector<long> &Heuristic_sol);
+vector<long> Recursive(KGraph &g, long k, long b, vector<long> &Heuristic_sol, bool &subopt);
+
+/*To solve DCNP in edge-weighted graphs.
+* Thin formulation with integer separation is used.*/
+vector<long> Thin_Weighted(KGraph &g, long k, long b, vector<long> &Heuristic_sol, bool &subopt);
 
 
 /*** callback functions for DCNP***/
@@ -184,6 +184,8 @@ protected:
 void callback();
 
 };
+
+
 
 
 #endif
