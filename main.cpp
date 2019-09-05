@@ -94,7 +94,13 @@ int main(int argc, char *argv[])
 		cerr << "Heuristic time = " << Heuristic_time << endl;
 
 		bool subopt;
-		vector<long> criticalNodes = Thin_I(g, k, b, Heuristic_sol, subopt);
+		vector<bool> Initial(5, false);
+		Initial[1] = true; //minimal length-exactly-1 i,i-connectors are added initially
+		Initial[2] = true; //minimal length-exactly-2 i,i-connectors are added initially
+		Initial[3] = true; //minimal length-exactly-3 i,i-connectors are added initially (when k>=3)
+		Initial[4] = false; //minimal length-exactly-4 i,i-connectors are added initially (when k>=2)
+
+		vector<long> criticalNodes = Thin_I(g, k, b, Heuristic_sol, subopt, Initial);
 		cout << "Total time = " << (double)(clock() - start) / CLOCKS_PER_SEC << " ";
 
 		if (subopt) cout << "Model is infeasible or other problem." << endl;
@@ -116,7 +122,7 @@ int main(int argc, char *argv[])
 		long b = atol(argv[5]); //budget 
 		cout << g.name << " Thin_F " << k << " " << b << " ";
 		time_t start = clock();
-
+		
 		cerr << "Finding heuristic solution" << endl;
 		time_t Heuristic_start = clock();
 		vector<long> Heuristic_sol = DCNP_Heuristic(g, k, b);
@@ -124,7 +130,12 @@ int main(int argc, char *argv[])
 		cerr << "Heuristic time = " << Heuristic_time << endl;
 
 		bool subopt;
-		vector<long> criticalNodes = Thin_F(g, k, b, Heuristic_sol, subopt);
+		vector<bool> Initial(5, false);
+		Initial[1] = true; //minimal length-exactly-1 i,i-connectors are added initially
+		Initial[2] = true; //minimal length-exactly-2 i,i-connectors are added initially
+		Initial[3] = true; //minimal length-exactly-3 i,i-connectors are added initially (when k>=3)
+		Initial[4] = false; //minimal length-exactly-4 i,i-connectors are added initially (when k>=2)
+		vector<long> criticalNodes = Thin_F(g, k, b, Heuristic_sol, subopt, Initial);
 		cout << "Total time = " << (double)(clock() - start) / CLOCKS_PER_SEC << " ";
 
 		if(subopt) cout << "Model is infeasible or other problem." << endl;
@@ -167,7 +178,7 @@ int main(int argc, char *argv[])
 			cout << "# close vertex pairs in G-D = " << obj(g, criticalNodes, k) << endl;
 		}
 	}
-	
+
 	/*To solve DCNP when distances are measured in terms of hops and k=4.
 	* Path-like formulation is used */
 	else if (strcmp(argv[1], "Path_like_k4") == 0)
@@ -284,7 +295,7 @@ int main(int argc, char *argv[])
 		cerr << "k = " << AllDist[index];
 	}
 
-
+	
 	else
 	{
 		cout << "ERROR: Your command is not valid." << endl;
