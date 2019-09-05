@@ -54,15 +54,19 @@ vector<long> DCNP_Heuristic_Weighted(KGraph &g, long s, long B);
 
 /*To solve DCNP when distances are measured in terms of hops
 * Thin formulation with integer separation is used. */
-vector<long> Thin_I(KGraph &g, long k, long b, vector<long> &Heuristic_sol, bool &subopt);
+vector<long> Thin_I(KGraph &g, long k, long b, vector<long> &Heuristic_sol, bool &subopt, vector<bool> &Initial);
 
 /*To solve DCNP when distances are measured in terms of hops
 * Thin formulation with fractional separation is used. */
-vector<long> Thin_F(KGraph &g, long k, long b, vector<long> &Heuristic_sol, bool &subopt);
+vector<long> Thin_F(KGraph &g, long k, long b, vector<long> &Heuristic_sol, bool &subopt, vector<bool> &Initial);
 
 /*To solve DCNP when distances are measured in terms of hops and k=3
 * Path-like formulation is used */
 vector<long> Path_like_k3(KGraph &g, long b, vector<long> &Heuristic_sol, bool &subopt);
+
+/*To solve DCNP when distances are measured in terms of hops and k=4
+* Path-like formulation is used */
+vector<long> Path_like_k4(KGraph &g, long b, vector<long> &Heuristic_sol, bool &subopt);
 
 /*To solve DCNP when distances are measured in terms of hops
 * Recursive formulation is used. */
