@@ -167,6 +167,36 @@ int main(int argc, char *argv[])
 			cout << "# close vertex pairs in G-D = " << obj(g, criticalNodes, k) << endl;
 		}
 	}
+	
+	/*To solve DCNP when distances are measured in terms of hops and k=4.
+	* Path-like formulation is used */
+	else if (strcmp(argv[1], "Path_like_k4") == 0)
+	{
+		KGraph g(argv[3], argv[3], argv[2]);
+		long k = 4;
+		long b = atol(argv[4]); //budget 
+		cout << g.name << " Path_like_k3 3 " << b << " ";
+		time_t start = clock();
+
+		cerr << "Finding heuristic solution" << endl;
+		time_t Heuristic_start = clock();
+		vector<long> Heuristic_sol = DCNP_Heuristic(g, k, b);
+		double Heuristic_time = (double)(clock() - Heuristic_start) / CLOCKS_PER_SEC;
+		cerr << "Heuristic time = " << Heuristic_time << endl;
+
+		bool subopt;
+		vector<long> criticalNodes = Path_like_k4(g, b, Heuristic_sol, subopt);
+		cout << "Total time = " << (double)(clock() - start) / CLOCKS_PER_SEC << " ";
+
+		if (subopt) cout << "Model is infeasible or other problem." << endl;
+		else
+		{
+			cerr << "# critical nodes = " << criticalNodes.size() << endl;
+			cerr << "** Label of critical node(s) =  ";
+			PrintVectorLong(criticalNodes);
+			cout << "# close vertex pairs in G-D = " << obj(g, criticalNodes, k) << endl;
+		}
+	}
 
 
 	/*To solve DCNP when distances are measured in terms of hops.
