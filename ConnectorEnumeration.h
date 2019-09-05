@@ -26,7 +26,10 @@ struct classcomp
 };
 
 std::map<std::vector<long>, long, classcomp> EnumerateLength3Connector(KGraph &g);
+std::map<std::vector<long>, long, classcomp> EnumerateLength4Connector(KGraph &g);
+
 
 vector<long> sortnodes(long i, long j, long k);
 vector<long> sort4nodes(long i, long j, long k, long t);
+vector<long> sort5nodes(long i, long p, long v, long q, long j);
 
