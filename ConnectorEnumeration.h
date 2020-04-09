@@ -4,14 +4,14 @@
 #include <algorithm>
 #include "KGraph.h"
 
-
+using namespace std;
 // Use to impose a total ordering on paths
 struct classcomp
 {
 	// if lhs comes before rhs return true
 	bool operator()(const std::vector<long>& lhs, const std::vector<long>& rhs) const
 	{
-		//smaller path comes first. As an example {7,9} comes befor {4,6,7} 
+		//smaller path comes first. As an example {7,9} comes before {4,6,7} 
 		if (lhs.size() < rhs.size()) return 1;
 		if (lhs.size() > rhs.size()) return 0;
 
@@ -25,8 +25,8 @@ struct classcomp
 	}
 };
 
-std::map<std::vector<long>, long, classcomp> EnumerateLength3Connector(KGraph &g);
-std::map<std::vector<long>, long, classcomp> EnumerateLength4Connector(KGraph &g);
+map<vector<long>, long, classcomp> EnumerateLength3Connector(KGraph &g);
+map<vector<long>, long, classcomp> EnumerateLength4Connector(KGraph &g);
 
 
 vector<long> sortnodes(long i, long j, long k);
