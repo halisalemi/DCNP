@@ -15,8 +15,7 @@ vector<bool> boolify(double *y, long n);
 //Printing function
 void PrintVectorLong(vector<long>&S);
 
-/*DCNP preprocessing function
-*It works for arbitrary k and b*/
+//Variable fixing function
 vector<long> FindNonCriticalNodes(KGraph &g);
 
 //Check if a vertex is simplicial
@@ -55,6 +54,11 @@ vector<long> DCNP_Heuristic_Weighted(KGraph &g, long s, long B);
 /*To solve DCNP when distances are measured in terms of hops
 * Thin formulation with integer separation is used. */
 vector<long> Thin_I(KGraph &g, long k, long b, vector<long> &Heuristic_sol, bool &subopt, vector<bool> &Initial);
+
+void ConstraintGenerator1(KGraph &g, GRBModel &model, unordered_map<long, long> hash_edges, GRBVar *X, GRBVar *Y);
+void ConstraintGenerator2(KGraph &g, GRBModel &model, unordered_map<long, long> hash_edges, GRBVar *X, GRBVar *Y);
+void ConstraintGenerator3(KGraph &g, GRBModel &model, unordered_map<long, long> hash_edges, GRBVar *X, GRBVar *Y);
+void ConstraintGenerator4(KGraph &g, GRBModel &model, unordered_map<long, long> hash_edges, GRBVar *X, GRBVar *Y);
 
 /*To solve DCNP when distances are measured in terms of hops
 * Thin formulation with fractional separation is used. */
@@ -188,8 +192,6 @@ protected:
 void callback();
 
 };
-
-
 
 
 #endif
