@@ -213,7 +213,7 @@ vector<long> KGraph::ShortestPathsUnweighted(long origin, vector<bool> &S, vecto
 	Finds predecessor*/
 	long u, v;
 	vector<long> YourPredecessor(n);
-	vector<long> dist(n, n); //shortest distance from origin node to each other node. dist[i] = n means i not reachable
+	vector<long> dist(n, n*n); //shortest distance from origin node to each other node. dist[i] = n*n means i not reachable
 	if (!S[origin]) return dist;  // if origin not in S, return infinities.
 	vector<bool> reached(n, false);
 	vector<long> children, parents;
