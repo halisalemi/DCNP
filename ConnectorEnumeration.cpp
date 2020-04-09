@@ -3,9 +3,7 @@
 #include <map>
 
 
-
 using namespace std;
-
 
 vector<long> sortnodes(long i, long j, long k)
 {
@@ -101,7 +99,7 @@ map<vector<long>, long, classcomp> EnumerateLength3Connector(KGraph &g)
 							{
 								//Now, we have found the a,i,j,b path
 								//checking whether a,i,j,b path does not belong to map and if not add it to the map	
-								vector<long> sortedsubset = sort4nodes(a, b, i,j);
+								vector<long> sortedsubset = sort4nodes(a, b, i, j);
 								std::map<std::vector<long>, long>::iterator it = map.find(sortedsubset);
 								if (it == map.end())
 								{
