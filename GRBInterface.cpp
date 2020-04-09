@@ -262,22 +262,144 @@ void IntegerSeparationWeighted::callback()
 }
 
 
+void ConstraintGenerator1(KGraph &g, GRBModel &model, unordered_map<long, long> hash_edges, GRBVar *X, GRBVar *Y)
+{
+	cerr << "Adding minimal length-exactly-1 i,j-connectors" << endl;
+	for (long i = 0; i < g.n; i++)
+	{
+		for (long i_neighbors_iterator = 0; i_neighbors_iterator < g.degree[i]; i_neighbors_iterator++)
+		{
+			long j = g.adj[i][i_neighbors_iterator];
+			if (i >= j) continue; //due to hashing
+			model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[j] >= 1);
+		}
+	}
+}
 
-/*The following function uses O(|E^k|) variables.
-Here, we use hashing for power graph edges.
-Integer separation is performed.*/
+void ConstraintGenerator2(KGraph &g, GRBModel &model, unordered_map<long, long> hash_edges, GRBVar *X, GRBVar *Y)
+{
+	cerr << "Adding minimal length-exactly-2 i,j-connectors" << endl;
+	for (long i = 0; i < g.n; i++)
+	{
+		vector<bool> i_neighbors = boolify(g.adj[i], g.n);
+		for (long i_neighbors_iterator = 0; i_neighbors_iterator < g.degree[i]; i_neighbors_iterator++)
+		{
+			long u = g.adj[i][i_neighbors_iterator];
+			for (long u_neighbors_iterator = 0; u_neighbors_iterator < g.degree[u]; u_neighbors_iterator++)
+			{
+				long j = g.adj[u][u_neighbors_iterator];
+				if (i >= j) continue; //due to hashing
+				if (i_neighbors[j]) continue; //because the connector is not minimal
+				model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[j] + Y[u] >= 1);
+			}
+		}
+	}
+}
+
+void ConstraintGenerator3(KGraph &g, GRBModel &model, unordered_map<long, long> hash_edges, GRBVar *X, GRBVar *Y)
+{
+	cerr << "Adding minimal length-exactly-3 i,j-connectors" << endl;
+	for (long i = 0; i < g.n; i++)
+	{
+		vector<long> dist_from_i = g.ShortestPathsUnweighted(i);
+		for (long i_neighbors_iterator = 0; i_neighbors_iterator < g.degree[i]; i_neighbors_iterator++)
+		{
+			long u = g.adj[i][i_neighbors_iterator];
+			vector<long> dist_from_u = g.ShortestPathsUnweighted(u);
+			for (long u_neighbors_iterator = 0; u_neighbors_iterator < g.degree[u]; u_neighbors_iterator++)
+			{
+				long v = g.adj[u][u_neighbors_iterator];
+				if (dist_from_i[v] == 1) continue;
+				for (long v_neighbors_iterator = 0; v_neighbors_iterator < g.degree[v]; v_neighbors_iterator++)
+				{
+					long j = g.adj[v][v_neighbors_iterator];
+					if (dist_from_i[j] == 1) continue;
+					if (dist_from_u[j] == 1) continue;
+					if (i >= j) continue;
+					model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[u] + Y[v] + Y[j] >= 1); //type V_12, V_21
+				}
+			}
+		}
+	}
+}
+
+void ConstraintGenerator4(KGraph &g, GRBModel &model, unordered_map<long, long> hash_edges, GRBVar *X, GRBVar *Y)
+{
+	cerr << "Adding minimal length-exactly-4 i,j-connectors" << endl;
+	for (long i = 0; i < g.n; i++)
+	{
+		vector<long> dist_from_i = g.ShortestPathsUnweighted(i);
+		for (long j = i + 1; j < g.n; j++)
+		{
+			if (dist_from_i[j] == 1 || dist_from_i[j] > 4) continue;
+			vector<long> dist_from_j = g.ShortestPathsUnweighted(j);
+			for (long i_neighbors_iterator = 0; i_neighbors_iterator < g.degree[i]; i_neighbors_iterator++)
+			{
+				long p = g.adj[i][i_neighbors_iterator];
+				vector<bool> p_neighbors = boolify(g.adj[p], g.n);
+				if (dist_from_j[p] != 2) continue;
+				for (long p_neighbors_iterator = 0; p_neighbors_iterator < g.degree[p]; p_neighbors_iterator++)
+				{
+					long v = g.adj[p][p_neighbors_iterator];
+					if (dist_from_i[v] != 2 || dist_from_j[v] != 2) continue;
+					for (long v_neighbors_iterator = 0; v_neighbors_iterator < g.degree[v]; v_neighbors_iterator++)
+					{
+						long q = g.adj[v][v_neighbors_iterator];
+						if (dist_from_i[q] == 2 && dist_from_j[q] == 1 && p_neighbors[q] == false)
+							model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[p] + Y[v] + Y[q] + Y[j] >= 1); //type1 V_12, V_22, V_21
+
+						if (dist_from_i[q] == 3 && dist_from_j[q] == 1)
+							model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[p] + Y[v] + Y[q] + Y[j] >= 1); //type2 V_12, V_22, V_31
+					}
+				}
+			}
+		}
+	}
+	for (long i = 0; i < g.n; i++)
+	{
+		vector<long> dist_from_i = g.ShortestPathsUnweighted(i);
+		for (long j = i + 1; j < g.n; j++)
+		{
+			if (dist_from_i[j] == 1 || dist_from_i[j] > 4) continue;
+			vector<long> dist_from_j = g.ShortestPathsUnweighted(j);
+			for (long i_neighbors_iterator = 0; i_neighbors_iterator < g.degree[i]; i_neighbors_iterator++)
+			{
+				long u = g.adj[i][i_neighbors_iterator];
+				if (dist_from_j[u] != 3) continue;
+				for (long u_neighbors_iterator = 0; u_neighbors_iterator < g.degree[u]; u_neighbors_iterator++)
+				{
+					long v = g.adj[u][u_neighbors_iterator];
+					if (dist_from_i[v] != 2 || dist_from_j[v] != 2) continue;
+					for (long v_neighbors_iterator = 0; v_neighbors_iterator < g.degree[v]; v_neighbors_iterator++)
+					{
+						long q = g.adj[v][v_neighbors_iterator];
+						if (dist_from_i[q] == 2 && dist_from_j[q] == 1)
+							model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[u] + Y[v] + Y[q] + Y[j] >= 1); //type3 V_13, V_22, V_21
+
+						if (dist_from_i[q] == 3 && dist_from_j[q] == 1)
+							model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[u] + Y[v] + Y[q] + Y[j] >= 1); //type4 V_13, V_22, V_31	
+					}
+				}
+			}
+		}
+	}
+}
+
+
+/*To solve DCNP for graphs with hop-based distances.
+* Thin formulation with integer separation*/
 vector<long> Thin_I(KGraph &g, long k, long b, vector<long> &Heuristic_sol, bool &subopt, vector<bool> &Initial)
 {
 	vector<long> Deleted;
 	subopt = true;
 	cerr << "creating power graph " << endl;
 	KGraph gs = g.CreatePowerGraph(k);
-	cout << "|E^k| = " << gs.m << " ";
+	cerr << "|E^k| = " << gs.m << " ";
 	try
 	{
 		GRBEnv env = GRBEnv();
 		env.set(GRB_IntParam_OutputFlag, 0);
-		env.set(GRB_IntParam_Method, 3); //use concurrent method to solve LP relaxation.
+		env.set(GRB_IntParam_Method, 3); //use concurrent method to solve LP relaxation
 		env.set(GRB_DoubleParam_TimeLimit, 3600);
 		env.set(GRB_DoubleParam_MIPGap, 0.0);
 		env.set(GRB_IntParam_LazyConstraints, 1);
@@ -299,153 +421,25 @@ vector<long> Thin_I(KGraph &g, long k, long b, vector<long> &Heuristic_sol, bool
 		long cur = 0;
 		for (long u = 0; u < gs.n; u++)
 		{
-			for (long i = 0; i < gs.adj[u].size(); i++)
+			for (long i = 0; i < gs.degree[u]; i++)
 			{
 				long v = gs.adj[u][i];
 				if (v > u) hash_edges.insert(make_pair(u*gs.n + v, cur++));
 			}
 		}
 
+
 		cerr << "Fixing variables" << endl;
 		vector<long> NonCriticalNodes = FindNonCriticalNodes(g);
 		for (long i = 0; i < NonCriticalNodes.size(); i++)
 			Y[NonCriticalNodes[i]].set(GRB_DoubleAttr_UB, 0);
 
-		long len1 = 0;
-		if (Initial[1])
-		{
-			cerr << "Adding minimal length-exactly-1 i,j-connectors" << endl;
-			for (long i = 0; i < g.n; i++)
-			{
-				for (long it = 0; it < g.degree[i]; it++)
-				{
-					long j = g.adj[i][it];
-					if (j > i)
-					{
-						model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[j] >= 1); //checking i>j is due to hashing
-						len1++;
-					}
-				}
-			}
-		}
-
-		long len2 = 0;
-		if (Initial[2])
-		{
-			cerr << "Adding minimal length-exactly-2 i,j-connectors" << endl;
-			for (long i = 0; i < g.n; i++)
-			{
-				vector<bool> i_neighbors = boolify(g.adj[i], g.n);
-				for (long it1 = 0; it1 < g.degree[i]; it1++)
-				{
-					long u = g.adj[i][it1];
-					for (long it2 = 0; it2 < g.degree[u]; it2++)
-					{
-						long j = g.adj[u][it2];
-						if (i >= j) continue;
-						if (i_neighbors[j]) continue;
-						model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[j] + Y[u] >= 1);
-						len2++;
-					}
-				}
-			}
-		}
 	
-		long len3 = 0;
-		if (Initial[3] && k >= 3)
-		{
-			cerr << "Adding minimal length-exactly-3 i,j-connectors" << endl;
-			for (long i = 0; i < g.n; i++)
-			{
-				vector<long> dist_from_i = g.ShortestPathsUnweighted(i);
-				for (long it1 = 0; it1 < g.degree[i]; it1++)
-				{
-					long u = g.adj[i][it1];
-					vector<long> dist_from_u = g.ShortestPathsUnweighted(u);
-					for (long it2 = 0; it2 < g.degree[u]; it2++)
-					{
-						long v = g.adj[u][it2];
-						if (dist_from_i[v] == 1) continue;
-						for (long it2 = 0; it2 < g.degree[v]; it2++)
-						{
-							long j = g.adj[v][it2];
-							if (dist_from_i[j] == 1) continue;
-							if (dist_from_u[j] == 1) continue;
-							if (i >= j) continue;
-							model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[u] + Y[v] + Y[j] >= 1);
-							len3++;
-						}
-					}
-				}
-			}
-		}
-
-		cerr << "len1 = " << len1 << endl;
-		cerr << "len2 = " << len2 << endl;
-		cerr << "len3 = " << len3 << endl;
-
-
-		if (Initial[4] && k >= 4)
-		{
-			cerr << "Adding minimal length-exactly-4 i,j-connectors" << endl;
-			for (long i = 0; i < g.n; i++)
-			{
-				vector<long> dist_from_i = g.ShortestPathsUnweighted(i);
-				for (long j = i + 1; j < g.n; j++)
-				{
-					if (dist_from_i[j] == 1 || dist_from_i[j] > 4) continue;
-					vector<long> dist_from_j = g.ShortestPathsUnweighted(j);
-					for (long it1 = 0; it1 < g.degree[i]; it1++)
-					{
-						long p = g.adj[i][it1];
-						vector<bool> p_neighbors = boolify(g.adj[p], g.n);
-						if (dist_from_j[p] != 2) continue;
-						for (long it2 = 0; it2 < g.degree[p]; it2++)
-						{
-							long v = g.adj[p][it2];
-							if (dist_from_i[v] != 2 || dist_from_j[v] != 2) continue;
-							for (long it3 = 0; it3 < g.degree[v]; it3++)
-							{
-								long q = g.adj[v][it3];
-								if (dist_from_i[q] == 2 && dist_from_j[q] == 1 && p_neighbors[q]==false)
-									model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[p] + Y[v] + Y[q] + Y[j] >= 1); //type1 V_12, V_22, V_21
-								if (dist_from_i[q] == 3 && dist_from_j[q] == 1)
-									model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[p] + Y[v] + Y[q] + Y[j] >= 1); //type2 V_12, V_22, V_31
-							}
-						}
-					}
-				}
-			}
-			for (long i = 0; i < g.n; i++) //type3 V_13, V_22, V_21
-			{
-				vector<long> dist_from_i = g.ShortestPathsUnweighted(i);
-				for (long j = i + 1; j < g.n; j++)
-				{
-					if (dist_from_i[j] == 1 || dist_from_i[j] > 4) continue;
-					vector<long> dist_from_j = g.ShortestPathsUnweighted(j);
-					for (long it1 = 0; it1 < g.degree[i]; it1++)
-					{
-						long u = g.adj[i][it1];
-						if (dist_from_j[u] != 3) continue;
-						for (long it2 = 0; it2 < g.degree[u]; it2++)
-						{
-							long v = g.adj[u][it2];
-							if (dist_from_i[v] != 2 || dist_from_j[v] != 2) continue;
-							for (long it3 = 0; it3 < g.degree[v]; it3++)
-							{
-								long q = g.adj[v][it3];
-								if (dist_from_i[q] == 2 && dist_from_j[q] == 1)
-									model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[u] + Y[v] + Y[q] + Y[j] >= 1); //type3 V_13, V_22, V_21
-								if (dist_from_i[q] == 3 && dist_from_j[q] == 1)
-									model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[u] + Y[v] + Y[q] + Y[j] >= 1); //type4 V_13, V_22, V_31
-							}
-						}
-					}
-				}
-			}
-		}
-
-
+		if (Initial[1]) ConstraintGenerator1(g, model, hash_edges, X, Y);
+		if (Initial[2]) ConstraintGenerator2(g, model, hash_edges, X, Y);
+		if (Initial[3] && k >= 3) ConstraintGenerator3(g, model, hash_edges, X, Y);
+		if (Initial[4] && k >= 4) ConstraintGenerator4(g, model, hash_edges, X, Y);
+	
 		cerr << "Adding budget constraints" << endl;
 		GRBLinExpr expr1 = 0;
 		for (long i = 0; i < g.n; i++)
@@ -490,7 +484,6 @@ vector<long> Thin_I(KGraph &g, long k, long b, vector<long> &Heuristic_sol, bool
 		cerr << "# callbacks = " << IntegerSeparation::numCallbacks << endl;
 		cerr << "# lazy cuts = " << IntegerSeparation::numLazyCutsInteger << endl;
 		cerr << "Time spent in callback = " << IntegerSeparation::TotalCallbackTime << endl;
-
 
 		int status = model.get(GRB_IntAttr_Status);
 		if (status == GRB_OPTIMAL)
@@ -561,130 +554,11 @@ vector<long> Thin_F(KGraph &g, long k, long b, vector<long> &Heuristic_sol, bool
 		for (long i = 0; i < NonCriticalNodes.size(); i++)
 			Y[NonCriticalNodes[i]].set(GRB_DoubleAttr_UB, 0);
 
+		if (Initial[1]) ConstraintGenerator1(g, model, hash_edges, X, Y);
+		if (Initial[2]) ConstraintGenerator2(g, model, hash_edges, X, Y);
+		if (Initial[3] && k >= 3) ConstraintGenerator3(g, model, hash_edges, X, Y);
+		if (Initial[4] && k >= 4) ConstraintGenerator4(g, model, hash_edges, X, Y);
 
-		if (Initial[1])
-		{
-			cerr << "Adding minimal length-exactly-1 i,j-connectors" << endl;
-			for (long i = 0; i < g.n; i++)
-			{
-				for (long it = 0; it < g.degree[i]; it++)
-				{
-					long j = g.adj[i][it];
-					if (j > i) model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[j] >= 1); //checking i>j is due to hashing
-				}
-			}
-		}
-
-
-		if (Initial[2])
-		{
-			cerr << "Adding minimal length-exactly-2 i,j-connectors" << endl;
-			for (long i = 0; i < g.n; i++)
-			{
-				vector<bool> i_neighbors = boolify(g.adj[i], g.n);
-				for (long it1 = 0; it1 < g.degree[i]; it1++)
-				{
-					long u = g.adj[i][it1];
-					for (long it2 = 0; it2 < g.degree[u]; it2++)
-					{
-						long j = g.adj[u][it2];
-						if (i >= j) continue;
-						if (i_neighbors[j]) continue;
-						model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[j] + Y[u] >= 1);
-					}
-				}
-			}
-		}
-
-
-		if (Initial[3] && k >= 3)
-		{
-			cerr << "Adding minimal length-exactly-3 i,j-connectors" << endl;
-			for (long i = 0; i < g.n; i++)
-			{
-				vector<long> dist_from_i = g.ShortestPathsUnweighted(i);
-				for (long it1 = 0; it1 < g.degree[i]; it1++)
-				{
-					long u = g.adj[i][it1];
-					vector<long> dist_from_u = g.ShortestPathsUnweighted(u);
-					for (long it2 = 0; it2 < g.degree[u]; it2++)
-					{
-						long v = g.adj[u][it2];
-						if (dist_from_i[v] == 1) continue;
-						for (long it2 = 0; it2 < g.degree[v]; it2++)
-						{
-							long j = g.adj[v][it2];
-							if (dist_from_i[j] == 1) continue;
-							if (dist_from_u[j] == 1) continue;
-							if (i >= j) continue;
-							model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[u] + Y[v] + Y[j] >= 1);
-						}
-					}
-				}
-			}
-		}
-
-
-		if (Initial[4] && k >= 4)
-		{
-			cerr << "Adding minimal length-exactly-4 i,j-connectors" << endl;
-			for (long i = 0; i < g.n; i++)
-			{
-				vector<long> dist_from_i = g.ShortestPathsUnweighted(i);
-				for (long j = i + 1; j < g.n; j++)
-				{
-					if (dist_from_i[j] == 1 || dist_from_i[j] > 4) continue;
-					vector<long> dist_from_j = g.ShortestPathsUnweighted(j);
-					for (long it1 = 0; it1 < g.degree[i]; it1++)
-					{
-						long p = g.adj[i][it1];
-						vector<bool> p_neighbors = boolify(g.adj[p], g.n);
-						if (dist_from_j[p] != 2) continue;
-						for (long it2 = 0; it2 < g.degree[p]; it2++)
-						{
-							long v = g.adj[p][it2];
-							if (dist_from_i[v] != 2 || dist_from_j[v] != 2) continue;
-							for (long it3 = 0; it3 < g.degree[v]; it3++)
-							{
-								long q = g.adj[v][it3];
-								if (dist_from_i[q] == 3 && dist_from_j[q] == 1 && p_neighbors[q] == false)
-									model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[p] + Y[v] + Y[q] + Y[j] >= 1); //type1 V_12, V_22, V_21
-								if (dist_from_i[q] == 3 && dist_from_j[q] == 1)
-									model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[p] + Y[v] + Y[q] + Y[j] >= 1); //type2 V_12, V_22, V_31
-							}
-						}
-					}
-				}
-			}
-			for (long i = 0; i < g.n; i++) 
-			{
-				vector<long> dist_from_i = g.ShortestPathsUnweighted(i);
-				for (long j = i + 1; j < g.n; j++)
-				{
-					if (dist_from_i[j] == 1 || dist_from_i[j] > 4) continue;
-					vector<long> dist_from_j = g.ShortestPathsUnweighted(j);
-					for (long it1 = 0; it1 < g.degree[i]; it1++)
-					{
-						long u = g.adj[i][it1];
-						if (dist_from_j[u] != 3) continue;
-						for (long it2 = 0; it2 < g.degree[u]; it2++)
-						{
-							long v = g.adj[u][it2];
-							if (dist_from_i[v] != 2 || dist_from_j[v] != 2) continue;
-							for (long it3 = 0; it3 < g.degree[v]; it3++)
-							{
-								long q = g.adj[v][it3];
-								if (dist_from_i[q] == 2 && dist_from_j[q] == 1)
-									model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[u] + Y[v] + Y[q] + Y[j] >= 1); //type3 V_13, V_22, V_21
-								if (dist_from_i[q] == 3 && dist_from_j[q] == 1)
-									model.addConstr(X[hash_edges[i*g.n + j]] + Y[i] + Y[u] + Y[v] + Y[q] + Y[j] >= 1); //type4 V_13, V_22, V_31
-							}
-						}
-					}
-				}
-			}
-		}
-		
 
 		cerr << "Adding budget constraints" << endl;
 		GRBLinExpr expr1 = 0;
@@ -777,12 +651,10 @@ vector<long> Path_like_k3(KGraph &g, long b, vector<long> &Heuristic_sol, bool &
 	try
 	{
 		GRBEnv env = GRBEnv();
-		//env.set(GRB_IntParam_OutputFlag, 0);
+		env.set(GRB_IntParam_OutputFlag, 0);
 		env.set(GRB_IntParam_Method, 3); //use concurrent method to solve LP relaxation.
-		long time = 3600 - (clock() - start_EnumerateConnector) / CLOCKS_PER_SEC;
-		cerr << "time = " << time << endl;
-		env.set(GRB_DoubleParam_TimeLimit, time);
-		env.set(GRB_DoubleParam_MIPGap, 0.0);
+		env.set(GRB_DoubleParam_TimeLimit, 3600);
+		env.set(GRB_IntParam_Cuts, 0);
 		GRBModel model = GRBModel(env);
 		GRBVar *X = model.addVars(gk.m, GRB_CONTINUOUS);
 		GRBVar *Y = model.addVars(g.n, GRB_BINARY);
@@ -817,49 +689,49 @@ vector<long> Path_like_k3(KGraph &g, long b, vector<long> &Heuristic_sol, bool &
 			Y[NonCriticalNodes[i]].set(GRB_DoubleAttr_UB, 0);
 
 
-		cerr << "Adding constraints (2b) & (2e)" << endl;
-		for (long u = 0; u < g.n; u++)
+		cerr << "Adding constraints" << endl;
+		for (long i = 0; i < g.n; i++)
 		{
-			vector<long> dist_from_u = g.ShortestPathsUnweighted(u);
-			for (long v = u + 1; v < g.n; v++)
+			vector<long> dist_from_i = g.ShortestPathsUnweighted(i);
+			for (long j = i + 1; j < g.n; j++)
 			{
-				if (dist_from_u[v] > 3) continue;
-				vector<long> dist_from_v = g.ShortestPathsUnweighted(v);
-				if (dist_from_u[v] == 1)
+				if (dist_from_i[j] > 3) continue;
+				vector<long> dist_from_j = g.ShortestPathsUnweighted(j);
+				if (dist_from_i[j] == 1)
 				{
-					std::map<std::vector<long>, long>::iterator it = map.find({ u,v });
-					model.addConstr(Z[it->second] + Y[u] + Y[v] >= 1); //2b
-					model.addConstr(X[hash_edges[u*g.n + v]] >= Z[it->second]); //2e
+					std::map<std::vector<long>, long>::iterator it = map.find({i,j});
+					model.addConstr(Z[it->second] + Y[i] + Y[j] >= 1); //constraint 2b
+					model.addConstr(X[hash_edges[i*g.n + j]] >= Z[it->second]); //constraint 2d
 					continue; //No other minimal length-3 i,j-connectors exist
 				}
-				for (long v_neighbors_iterator = 0; v_neighbors_iterator < g.degree[v]; v_neighbors_iterator++)
+				for (long j_neighbors_iterator = 0; j_neighbors_iterator < g.degree[j]; j_neighbors_iterator++)
 				{
-					long ii = g.adj[v][v_neighbors_iterator];
-					if (dist_from_u[ii] == 1)
+					long v = g.adj[j][j_neighbors_iterator];
+					if (dist_from_i[v] == 1) //v belongs to V_11
 					{
-						vector<long> sortedsubset = sortnodes(u, v, ii);
+						vector<long> sortedsubset = sortnodes(i,v,j);
 						std::map<std::vector<long>, long>::iterator it = map.find(sortedsubset);
-						model.addConstr(Z[it->second] + Y[u] + Y[v] + Y[ii] >= 1); //2b
-						model.addConstr(X[hash_edges[u*g.n + v]] >= Z[it->second]); //2e
-					 }
-					if (dist_from_u[ii] == 2)
+						model.addConstr(Z[it->second] + Y[i] + Y[v] + Y[j] >= 1); //constraint 2b
+						model.addConstr(X[hash_edges[i*g.n + j]] >= Z[it->second]); //constraint 2d
+					}
+					if (dist_from_i[v] == 2) //v belongs to V_21
 					{
-						for (long ii_neighbors_iterator = 0; ii_neighbors_iterator < g.degree[ii]; ii_neighbors_iterator++)
+						for (long v_neighbors_iterator = 0; v_neighbors_iterator < g.degree[v]; v_neighbors_iterator++)
 						{
-							long jj = g.adj[ii][ii_neighbors_iterator];
-							if (dist_from_u[jj] == 1 && dist_from_v[jj] == 2)
+							long u = g.adj[v][v_neighbors_iterator];
+							if (dist_from_i[u] == 1 && dist_from_j[u] == 2) //u belongs to V_12
 							{
-								vector<long> sortedsubset = sort4nodes(u, v, ii, jj);
+								vector<long> sortedsubset = sort4nodes(i,u,v,j);
 								std::map<std::vector<long>, long>::iterator it = map.find(sortedsubset);
-								model.addConstr(Z[it->second] + Y[u] + Y[v] + Y[ii] + Y[jj] >= 1); //2b
-								model.addConstr(X[hash_edges[u*g.n + v]] >= Z[it->second]); //2e
+								model.addConstr(Z[it->second] + Y[i] + Y[u] + Y[v] + Y[j] >= 1); //constraint 2b
+								model.addConstr(X[hash_edges[i*g.n + j]] >= Z[it->second]); //constraint 2d 
 							}
 						}
 					}
 				}
 			}
 		}
-	
+
 
 		cerr << "Adding budget constraints" << endl;
 		GRBLinExpr expr1 = 0;
@@ -935,13 +807,10 @@ vector<long> Path_like_k4(KGraph &g, long b, vector<long> &Heuristic_sol, bool &
 	cerr << "Creating power graph " << endl;
 	KGraph gk = g.CreatePowerGraph(k);
 	cerr << "|E^k| = " << gk.m << endl;
-	time_t start_EnumerateConnector = clock();
-
 	map<vector<long>, long, classcomp>map1 = EnumerateLength3Connector(g);
 	map<vector<long>, long, classcomp>map2 = EnumerateLength4Connector(g);
 	cerr << "map1 size = " << map1.size() << endl;
 	cerr << "map2 size = " << map2.size() << endl;
-
 
 	try
 	{
@@ -953,8 +822,8 @@ vector<long> Path_like_k4(KGraph &g, long b, vector<long> &Heuristic_sol, bool &
 		GRBModel model = GRBModel(env);
 		GRBVar *X = model.addVars(gk.m, GRB_CONTINUOUS);
 		GRBVar *Y = model.addVars(g.n, GRB_BINARY);
-		GRBVar *Z = model.addVars(map1.size(), GRB_BINARY);
-		GRBVar *W = model.addVars(map2.size(), GRB_BINARY);
+		GRBVar *Z = model.addVars(map1.size(), GRB_BINARY); 
+		GRBVar *W = model.addVars(map2.size(), GRB_BINARY); 
 		model.update();
 
 
@@ -985,8 +854,7 @@ vector<long> Path_like_k4(KGraph &g, long b, vector<long> &Heuristic_sol, bool &
 			Y[NonCriticalNodes[i]].set(GRB_DoubleAttr_UB, 0);
 
 
-
-		cerr << "Adding constraints (2b) & (2e)" << endl;
+		cerr << "Adding constraints (2b) & (2d) for minimal length-3 i,j-connectors" << endl;
 		for (long u = 0; u < g.n; u++)
 		{
 			vector<long> dist_from_u = g.ShortestPathsUnweighted(u);
@@ -998,7 +866,7 @@ vector<long> Path_like_k4(KGraph &g, long b, vector<long> &Heuristic_sol, bool &
 				{
 					std::map<std::vector<long>, long>::iterator it = map1.find({ u,v });
 					model.addConstr(Z[it->second] + Y[u] + Y[v] >= 1); //2b
-					model.addConstr(X[hash_edges[u*g.n + v]] >= Z[it->second]); //2e
+					model.addConstr(X[hash_edges[u*g.n + v]] >= Z[it->second]); //2d
 					continue; //No other minimal length-3 i,j-connectors exist
 				}
 				for (long v_neighbors_iterator = 0; v_neighbors_iterator < g.degree[v]; v_neighbors_iterator++)
@@ -1009,7 +877,7 @@ vector<long> Path_like_k4(KGraph &g, long b, vector<long> &Heuristic_sol, bool &
 						vector<long> sortedsubset = sortnodes(u, v, ii);
 						std::map<std::vector<long>, long>::iterator it = map1.find(sortedsubset);
 						model.addConstr(Z[it->second] + Y[u] + Y[v] + Y[ii] >= 1); //2b
-						model.addConstr(X[hash_edges[u*g.n + v]] >= Z[it->second]); //2e
+						model.addConstr(X[hash_edges[u*g.n + v]] >= Z[it->second]); //2d
 					}
 					if (dist_from_u[ii] == 2)
 					{
@@ -1021,7 +889,7 @@ vector<long> Path_like_k4(KGraph &g, long b, vector<long> &Heuristic_sol, bool &
 								vector<long> sortedsubset = sort4nodes(u, v, ii, jj);
 								std::map<std::vector<long>, long>::iterator it = map1.find(sortedsubset);
 								model.addConstr(Z[it->second] + Y[u] + Y[v] + Y[ii] + Y[jj] >= 1); //2b
-								model.addConstr(X[hash_edges[u*g.n + v]] >= Z[it->second]); //2e
+								model.addConstr(X[hash_edges[u*g.n + v]] >= Z[it->second]); //2d
 							}
 						}
 					}
@@ -1029,7 +897,8 @@ vector<long> Path_like_k4(KGraph &g, long b, vector<long> &Heuristic_sol, bool &
 			}
 		}
 
-		cerr << "New" << endl;
+
+		cerr << "Adding constraints (2b) & (2d) for minimal length-exactly-4 i,j-connectors" << endl;
 		for (long i = 0; i < g.n; i++)
 		{
 			vector<long> dist_from_i = g.ShortestPathsUnweighted(i);
@@ -1054,7 +923,7 @@ vector<long> Path_like_k4(KGraph &g, long b, vector<long> &Heuristic_sol, bool &
 								vector<long> sortedsubset = sort5nodes(i, p, v, q, j);
 								std::map<std::vector<long>, long>::iterator it = map2.find(sortedsubset);
 								model.addConstr(W[it->second] + Y[i] + Y[p] + Y[v] + Y[q] + Y[j] >= 1); //2b
-								model.addConstr(X[hash_edges[i*g.n + j]] >= W[it->second]); //2e
+								model.addConstr(X[hash_edges[i*g.n + j]] >= W[it->second]); //2d
 							}
 
 							if (dist_from_i[q] == 3 && dist_from_j[q] == 1)
@@ -1062,9 +931,8 @@ vector<long> Path_like_k4(KGraph &g, long b, vector<long> &Heuristic_sol, bool &
 								vector<long> sortedsubset = sort5nodes(i, p, v, q, j);
 								std::map<std::vector<long>, long>::iterator it = map2.find(sortedsubset);
 								model.addConstr(W[it->second] + Y[i] + Y[p] + Y[v] + Y[q] + Y[j] >= 1); //2b
-								model.addConstr(X[hash_edges[i*g.n + j]] >= W[it->second]); //2e
+								model.addConstr(X[hash_edges[i*g.n + j]] >= W[it->second]); //2d
 							}	
-
 						}
 					}
 				}
@@ -1094,7 +962,7 @@ vector<long> Path_like_k4(KGraph &g, long b, vector<long> &Heuristic_sol, bool &
 								vector<long> sortedsubset = sort5nodes(i, u, v, q, j);
 								std::map<std::vector<long>, long>::iterator it = map2.find(sortedsubset);
 								model.addConstr(W[it->second] + Y[i] + Y[u] + Y[v] + Y[q] + Y[j] >= 1); //2b
-								model.addConstr(X[hash_edges[i*g.n + j]] >= W[it->second]); //2e
+								model.addConstr(X[hash_edges[i*g.n + j]] >= W[it->second]); //2d
 							}
 								
 							if (dist_from_i[q] == 3 && dist_from_j[q] == 1)
@@ -1102,13 +970,14 @@ vector<long> Path_like_k4(KGraph &g, long b, vector<long> &Heuristic_sol, bool &
 								vector<long> sortedsubset = sort5nodes(i, u, v, q, j);
 								std::map<std::vector<long>, long>::iterator it = map2.find(sortedsubset);
 								model.addConstr(W[it->second] + Y[i] + Y[u] + Y[v] + Y[q] + Y[j] >= 1); //2b
-								model.addConstr(X[hash_edges[i*g.n + j]] >= W[it->second]); //2e
+								model.addConstr(X[hash_edges[i*g.n + j]] >= W[it->second]); //2d
 							}			
 						}
 					}
 				}
 			}
 		}
+
 
 		cerr << "Adding budget constraints" << endl;
 		GRBLinExpr expr1 = 0;
@@ -1183,6 +1052,7 @@ vector<long> Recursive(KGraph &g, long k, long b, vector<long> &Heuristic_sol, b
 	subopt = true;
 	cerr << "Creating power graph " << endl;
 	KGraph gs = g.CreatePowerGraph(k);
+	cerr << "|E^k| = " << gs.m << endl;
 
 	try
 	{
@@ -1207,6 +1077,7 @@ vector<long> Recursive(KGraph &g, long k, long b, vector<long> &Heuristic_sol, b
 		}
 		model.update();
 
+	
 		cerr << "Hashing edges" << endl;
 		unordered_map<long, long> hash_edges;
 		long cur = 0;
@@ -1279,13 +1150,11 @@ vector<long> Recursive(KGraph &g, long k, long b, vector<long> &Heuristic_sol, b
 		cerr << "Adding constraint (1e)" << endl;
 		for (long i = 0; i < g.n; i++)
 		{
-			vector<long> dist_from_i = g.ShortestPathsUnweighted(i);
 			for (long counter = 0; counter < g.degree[i]; counter++)
 			{
 				long j = g.adj[i][counter];
-				if (dist_from_i[j] > k) continue;
 				if (j > i)
-					for (long s = dist_from_i[j]; s < k; s++)
+					for (long s = 1; s < k; s++)
 						model.addConstr(U[i][j][s] == U[i][j][0]);
 			}
 		}
@@ -1561,17 +1430,16 @@ vector<long> Thin_Weighted(KGraph &g, long k, long b, vector<long> &Heuristic_so
 bool IsSimplicial(KGraph &g, long i)
 {
 	bool simplicial = true;
-	for (long counter1 = 0; counter1 < g.degree[i]; counter1++)
+	for (long counter = 0; counter < g.degree[i]; counter++)
 	{
-		long j = g.adj[i][counter1];
+		long j = g.adj[i][counter];
 		if (g.CommonNeighbors(j, g.adj[i]) != g.degree[i] - 1)
 			simplicial = false;
 	}
 	return simplicial;
 }
 
-/*DCNP preprocessing function
-*It works for arbitrary k and b*/
+//Variable fixing function
 vector<long> FindNonCriticalNodes(KGraph &g)
 {
 	vector<long> simplicial;
@@ -1580,19 +1448,19 @@ vector<long> FindNonCriticalNodes(KGraph &g)
 		if (IsSimplicial(g, i))
 			simplicial.push_back(i);
 
-	vector<long> Rmap1;
-	KGraph gnew = g.CreateInducedGraph(simplicial, Rmap1);
+	vector<long> Rmap;
+	KGraph G_S = g.CreateInducedGraph(simplicial, Rmap);
 
 	vector<long> set_I;
-	vector< vector< long> > components;
+	vector<vector<long>> components;
 	vector<long> degreeZero;
-	gnew.FindConnectedComponents(components, degreeZero);
+	G_S.FindConnectedComponents(components, degreeZero);
 
 	for (long i = 0; i < degreeZero.size(); i++)
-		set_I.push_back(simplicial[Rmap1[simplicial[degreeZero[i]]]]);
+		set_I.push_back(simplicial[Rmap[simplicial[degreeZero[i]]]]);
 
 	for (long i = 0; i < components.size(); i++)
-		set_I.push_back(simplicial[Rmap1[simplicial[components[i][0]]]]);
+		set_I.push_back(simplicial[Rmap[simplicial[components[i][0]]]]);
 
 	cerr << "# simplicial vertices fixed = " << set_I.size() << endl;
 
@@ -1797,7 +1665,7 @@ vector<long> FindTopTBetweennessCentralityNodesWeighted(KGraph &g, long T, long 
 }
 
 
-//DCNP Heuristic to find distance-based critical nodes
+//DCNP Heuristic for graphs with hop-based distances
 vector<long> DCNP_Heuristic(KGraph &g, long k, long b)
 {
 	vector<long> D_Star;
@@ -1813,7 +1681,7 @@ vector<long> DCNP_Heuristic(KGraph &g, long k, long b)
 		for (long i = 0; i < g.n; i++)
 		{
 			if (NonDeleted[i]) continue;
-			NonDeleted[i] = true;
+			NonDeleted[i] = true; 
 			long TempObj = obj(g, NonDeleted, k);
 			if (TempObj < min)
 			{
@@ -1832,6 +1700,8 @@ vector<long> DCNP_Heuristic(KGraph &g, long k, long b)
 	return D_Star;
 }
 
+
+//DCNP Heuristic for graphs with edge-weighted distances
 vector<long> DCNP_Heuristic_Weighted(KGraph &g, long k, long b)
 {
 	vector<long> D_Star;
@@ -1901,6 +1771,9 @@ d_and_p d_and_p_function(KGraph &goriginal, KGraph &gpower, long i, long k, doub
 	d_and_p result = { d,p };
 	return result;
 }
+
+
+
 
 
 
