@@ -10,11 +10,6 @@
 extern double copy_time;
 using namespace std;
 
-vector<long> UnionOfSortedLists(vector<long>&u, vector<long>&v);
-// find B\S, where B and S are sorted (and B=bigger, S=smaller). Assumes S\subseteq B.
-vector<long> SetMinusOfSortedLists(vector<long>&B, vector<long>&S);
-vector<long> SetIntersectionOfSortedLists(vector<long>&u, vector<long>&v);
-
 class KGraph
 {
 public:
