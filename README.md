@@ -1,5 +1,12 @@
 # DCNP
-This code accompanies the paper "Solving the distance-based critical node problem" and is written in C++. If you want to use or cite this code, please cite the paper.
+This code accompanies the paper "Solving the distance-based critical node problem" and is written in C++. If you want to use or cite this code, please cite the paper:
+
+        @misc{salemi2020,
+        title={Solving the distance-based critical node problem},
+        author={Salemi, Hosseinali and Buchanan, Austin},
+        year={2020},
+        note={Preprint available at \url{http://www.optimization-online.org/DB_HTML/2020/04/7751.html}}
+        }
 
 
 Compiling the code
